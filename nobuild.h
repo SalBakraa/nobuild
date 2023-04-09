@@ -107,6 +107,8 @@ typedef struct {
 } Cstr_Array;
 
 Cstr_Array cstr_array_make(Cstr first, ...);
+#define CSTR_ARRAY_MAKE(first, ...) cstr_array_make(first, ##__VA_ARGS__, NULL)
+
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
 
