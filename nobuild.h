@@ -1,6 +1,12 @@
 #ifndef NOBUILD_H_
 #define NOBUILD_H_
 
+#ifdef __GNUC__
+#	define NOBUILD_DEPRECATED(func) func __attribute__ ((deprecated))
+#else
+#	define NOBUILD_DEPRECATED(func) func
+#endif
+
 #ifndef _WIN32
 #    define _POSIX_C_SOURCE 200809L
 #    include <sys/types.h>
@@ -98,8 +104,10 @@ typedef const char * Cstr;
 int cstr_ends_with(Cstr cstr, Cstr postfix);
 #define ENDS_WITH(cstr, postfix) cstr_ends_with(cstr, postfix)
 
-Cstr cstr_no_ext(Cstr path);
-#define NOEXT(path) cstr_no_ext(path)
+int cstr_starts_with(Cstr cstr, Cstr prefix);
+#define STARTS_WITH(cstr, prefix) cstr_starts_with(cstr, prefix)
+
+NOBUILD_DEPRECATED(Cstr cstr_no_ext(Cstr path));
 
 typedef struct {
     Cstr *elems;
@@ -261,6 +269,7 @@ void chain_echo(Chain chain);
 void rebuild_urself(const char *binary_path, const char *source_path);
 
 Cstr path_no_ext(Cstr path);
+#define NOEXT(path) path_no_ext(path)
 
 int is_path1_modified_after_path2(Cstr path1, Cstr path2);
 #define IS_NEWER(path1, path2) is_path1_modified_after_path2(path1, path2)
@@ -474,20 +483,8 @@ int cstr_ends_with(Cstr cstr, Cstr postfix)
 
 Cstr cstr_no_ext(Cstr path)
 {
-    size_t n = strlen(path);
-    while (n > 0 && path[n - 1] != '.') {
-        n -= 1;
-    }
-
-    if (n > 0) {
-        char *result = malloc(n);
-        memcpy(result, path, n);
-        result[n - 1] = '\0';
-
-        return result;
-    } else {
-        return path;
-    }
+    WARN("This function is deprecated. Use `path_no_ext` instead");
+    return path_no_ext(path);
 }
 
 Cstr_Array cstr_array_make(Cstr first, ...)
