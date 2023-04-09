@@ -110,6 +110,8 @@ typedef struct {
 Cstr_Array cstr_array_make(Cstr first, ...);
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
 
+Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
+
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
@@ -448,6 +450,42 @@ Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
 
     cstrs.elems[cstrs.count++] = cstr;
     cstrs.capacity--;
+    return cstrs;
+}
+
+
+Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
+{
+    if (cstrs.count == 0) {
+        return cstrs;
+    }
+
+    if (cstr == NULL) {
+        cstrs.elems[--cstrs.count];
+        cstrs.capacity++;
+        return cstrs;
+    }
+
+    // Find the index of the element to be removed
+    const size_t cstr_len = strlen(cstr);
+    for (size_t i = 0; i < cstrs.count; i++) {
+        const size_t elem_len = strlen(cstrs.elems[i]);
+        if (elem_len != cstr_len || strcmp(cstrs.elems[i], cstr) != 0) {
+            continue;
+        }
+
+        // Shift elements left if found the cstr
+        for (size_t j = i; j < cstrs.count - 1; j++) {
+            cstrs.elems[j] = cstrs.elems[j + 1];
+        }
+        cstrs.count--;
+        cstrs.capacity++;
+
+        // TODO: Might want to realloc array if capacity is too high
+        return cstrs;
+    }
+
+    // The string was not found
     return cstrs;
 }
 
