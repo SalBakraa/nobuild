@@ -104,6 +104,7 @@ Cstr cstr_no_ext(Cstr path);
 typedef struct {
     Cstr *elems;
     size_t count;
+    size_t capacity;
 } Cstr_Array;
 
 Cstr_Array cstr_array_make(Cstr first, ...);
@@ -436,13 +437,17 @@ int closedir(DIR *dirp)
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
 {
-    Cstr_Array result = {
-        .count = cstrs.count + 1
-    };
-    result.elems = malloc(sizeof(result.elems[0]) * result.count);
-    memcpy(result.elems, cstrs.elems, cstrs.count * sizeof(result.elems[0]));
-    result.elems[cstrs.count] = cstr;
-    return result;
+    if (cstrs.capacity < 1) {
+        cstrs.elems = realloc(cstrs.elems, sizeof *cstrs.elems * (cstrs.count + 10));
+        cstrs.capacity += 10;
+        if (cstrs.elems == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+    }
+
+    cstrs.elems[cstrs.count++] = cstr;
+    cstrs.capacity--;
+    return cstrs;
 }
 
 int cstr_ends_with(Cstr cstr, Cstr postfix)
@@ -480,7 +485,6 @@ Cstr_Array cstr_array_make(Cstr first, ...)
     }
 
     result.count += 1;
-
     va_list args;
     va_start(args, first);
     for (Cstr next = va_arg(args, Cstr);
@@ -490,12 +494,12 @@ Cstr_Array cstr_array_make(Cstr first, ...)
     }
     va_end(args);
 
-    result.elems = malloc(sizeof(result.elems[0]) * result.count);
+    result.elems = malloc(sizeof *result.elems * result.count);
     if (result.elems == NULL) {
         PANIC("could not allocate memory: %s", strerror(errno));
     }
-    result.count = 0;
 
+    result.count = 0;
     result.elems[result.count++] = first;
 
     va_start(args, first);
