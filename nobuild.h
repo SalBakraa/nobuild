@@ -112,6 +112,8 @@ Cstr_Array cstr_array_make(Cstr first, ...);
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
 
+Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
+
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
@@ -451,6 +453,42 @@ Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
     cstrs.elems[cstrs.count++] = cstr;
     cstrs.capacity--;
     return cstrs;
+}
+
+
+Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
+{
+    if (cstrs.count == 0) {
+        return NULL;
+    }
+
+    if (cstr == NULL) {
+        cstrs.capacity++;
+        return cstrs.elems[--cstrs.count];
+    }
+
+    // Find the index of the element to be removed
+    size_t index = -1;
+    for (size_t i = 0; i < cstrs.count; i++) {
+        if (strcmp(cstrs.elems[i], element) == 0) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1) {
+        return NULL;
+    }
+
+    // Shift elements to the left
+    Cstr ret = cstrs.elems[index];
+    for (size_t i = index; i < cstrs.count - 1; i++) {
+        cstrs.elems[i] = cstrs.elems[i + 1];
+    }
+    cstrs.count--;
+    cstrs.capacity++;
+
+    // TODO: Might want to resize array if capacity is too high
 }
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
