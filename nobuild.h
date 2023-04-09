@@ -260,6 +260,9 @@ void chain_echo(Chain chain);
 
 void rebuild_urself(const char *binary_path, const char *source_path);
 
+int is_path1_modified_after_path2(Cstr path1, Cstr path2);
+#define IS_NEWER(path1, path2) is_path1_modified_after_path2(path1, path2)
+
 Cstr path_dirname(Cstr path);
 #define DIRNAME(path) path_dirname(path)
 
