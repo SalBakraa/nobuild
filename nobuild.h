@@ -273,6 +273,9 @@ void chain_echo(Chain chain);
 
 void rebuild_urself(const char *binary_path, const char *source_path);
 
+Cstr path_basename(Cstr path);
+#define BASENAME(path) path_basename(path)
+
 int path_is_dir(Cstr path);
 #define IS_DIR(path) path_is_dir(path)
 
@@ -1105,6 +1108,51 @@ void chain_echo(Chain chain)
     }
 
     printf("\n");
+}
+
+Cstr path_basename(Cstr path)
+{
+    char path_sep = *PATH_SEP;
+    Cstr last_sep = strrchr(path, path_sep);
+    if (last_sep == NULL) {
+        return path;
+    }
+
+    // Last character is not a separator
+    if (*(last_sep + 1) != '\0') {
+        size_t len = strlen(last_sep + 1);
+        char* basename = malloc(len + 1);
+        if (basename == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+
+        basename = strcpy(basename, last_sep+1);
+        return basename;
+    }
+
+    // Skip consecutive seprators
+    while (last_sep > path && *(last_sep - 1) == path_sep) {
+        --last_sep;
+    }
+
+    if (last_sep == path) {
+        return PATH_SEP;
+    }
+
+    // Find the start of the basename
+    Cstr start = last_sep;
+    while (start > path && *(start - 1) != path_sep) {
+        --start;
+    }
+    assert(last_sep >= start && "last_sep must never be less than start");
+
+    size_t len = (size_t)(last_sep - start);
+    char *basename = malloc(len + 1);
+    if (basename == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    return basename[len] = '\0', memcpy(basename, start, len);
 }
 
 int path_exists(Cstr path)
