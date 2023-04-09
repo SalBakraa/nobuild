@@ -273,6 +273,9 @@ void chain_echo(Chain chain);
 
 void rebuild_urself(const char *binary_path, const char *source_path);
 
+Cstr path_dirname(Cstr path);
+#define DIRNAME(path) path_dirname(path)
+
 Cstr path_basename(Cstr path);
 #define BASENAME(path) path_basename(path)
 
@@ -1111,6 +1114,31 @@ void chain_echo(Chain chain)
     }
 
     printf("\n");
+}
+
+Cstr path_dirname(Cstr path)
+{
+    char path_sep = *PATH_SEP;
+    int path_len = strlen(path);
+    if (path_len == 0) {
+        return ".";
+    }
+
+    char *last_slash = strrchr(path, path_sep);
+    if (last_slash == NULL) {
+        return ".";
+    }
+
+    // Return root
+    if (last_slash == path) {
+        return PATH_SEP;
+    }
+
+    int res_len = last_slash - path;
+    Cstr result = malloc(res_len);
+    strncpy(result, path, res_len);
+    result[res_len] = '\0';
+    return result;
 }
 
 Cstr path_basename(Cstr path)
