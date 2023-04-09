@@ -260,6 +260,9 @@ void chain_echo(Chain chain);
 
 void rebuild_urself(const char *binary_path, const char *source_path);
 
+Cstr path_dirname(Cstr path);
+#define DIRNAME(path) path_dirname(path)
+
 Cstr path_basename(Cstr path);
 #define BASENAME(path) path_basename(path)
 
@@ -938,6 +941,37 @@ void chain_echo(Chain chain)
     }
 
     printf("\n");
+}
+
+Cstr path_dirname(Cstr path)
+{
+    char path_sep = *PATH_SEP;
+    size_t prefix_len = 0;
+
+    // Get length of directory prefix
+    for (size_t i = 1; i < strlen(path); ++i) {
+        if (path[i] != path_sep && path[i-1] == path_sep) {
+            prefix_len = i;
+        }
+    }
+
+    if (prefix_len == 0) {
+        return *path == path_sep ? PATH_SEP : ".";
+    }
+
+    // Strip trailing slashes
+    while (prefix_len > 1 && path[prefix_len-1] == path_sep) {
+        --prefix_len;
+    }
+
+    // copy prefix
+    size_t len = prefix_len;
+    char* dirname = malloc(len+1);
+    if (dirname == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    return dirname[len] = '\0', memcpy(dirname, path, len);
 }
 
 Cstr path_basename(Cstr path)
