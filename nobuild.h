@@ -116,8 +116,10 @@ Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
-Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
+Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim);
+#define SPLIT(cstr, delim) cstr_array_from_cstr(cstr, delim)
 
+Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
 #define JOIN(sep, ...) cstr_array_join(sep, cstr_array_make(__VA_ARGS__, NULL))
 #define CONCAT(...) JOIN("", __VA_ARGS__)
 #define PATH(...) JOIN(PATH_SEP, __VA_ARGS__)
@@ -568,6 +570,87 @@ Cstr_Array cstr_array_make(Cstr first, ...)
     va_end(args);
 
     return result;
+}
+
+Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)
+{
+    size_t len = strlen(cstr);
+    size_t d_len = strlen(delim);
+    size_t substr_count = 1;
+    for (size_t i = 0; i < len; ++i) {
+        if ((len - i) < d_len) {
+            break;
+        }
+
+        size_t delim_found = 0;
+        for (size_t j = 0; j < d_len; ++j) {
+            if (cstr[i+j] != delim[j]) {
+                delim_found = 0;
+                break;
+            }
+            delim_found = 1;
+        }
+
+        if (delim_found) {
+            substr_count++;
+            i += d_len - 1;
+        }
+    }
+
+    // if dlen == 0 or was never found
+    if (substr_count == 1) {
+        // TODO: differentiate between delim == null and delim == "" and delim not found
+        //       Split the string into an array of strings, where each string is a single character
+
+        return cstr_array_make(cstr);
+    }
+
+    Cstr_Array ret = { .count = substr_count };
+    ret.elems = malloc(sizeof(Cstr) * ret.count);
+    if (ret.elems == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    size_t substr_start = 0;
+    size_t substr_index = 0;
+    for (size_t i = 0; i < len; ++i) {
+        if ((len - i) < d_len) {
+            break;
+        }
+
+        size_t delim_found = 0;
+        for (size_t j = 0; j < d_len; ++j) {
+            if (cstr[i+j] != delim[j]) {
+                delim_found = 0;
+                break;
+            }
+            delim_found = 1;
+        }
+
+        if (!delim_found) {
+            continue;
+        }
+
+        size_t substr_len = i - substr_start;
+        char *substr = calloc(substr_len + 1, sizeof(unsigned char));
+        if (substr == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+
+        ret.elems[substr_index++] = memcpy(substr, (cstr+substr_start), substr_len * sizeof(unsigned char));
+        i += d_len - 1;
+        substr_start = i + 1;
+    }
+
+    // Add the last substring
+    size_t substr_len = len - substr_start;
+    char *substr = malloc(substr_len * sizeof(unsigned char));
+    if (substr == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    ret.elems[substr_index++] = memcpy(substr, (cstr+substr_start), substr_len * sizeof(unsigned char));
+    return ret;
 }
 
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs)
