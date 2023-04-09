@@ -111,6 +111,9 @@ Cstr_Array cstr_array_make(Cstr first, ...);
 #define CSTR_ARRAY_MAKE(first, ...) cstr_array_make(first, ##__VA_ARGS__, NULL)
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
+
+Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
+
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
 
 #define JOIN(sep, ...) cstr_array_join(sep, cstr_array_make(__VA_ARGS__, NULL))
@@ -448,6 +451,22 @@ Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
     cstrs.elems[cstrs.count++] = cstr;
     cstrs.capacity--;
     return cstrs;
+}
+
+Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
+{
+    if (cstrs_a.capacity < cstrs_b.count) {
+        cstrs_a.elems = realloc(cstrs_a.elems, sizeof *cstrs_a.elems * (cstrs_a.count + cstrs_b.count));
+        cstrs_a.capacity += cstrs_b.count;
+        if (cstrs_a.elems == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+    }
+
+    memcpy(cstrs_a.elems + cstrs_a.count, cstrs_b.elems, *cstrs_a.elems * cstrs_b.count);
+    cstrs_a.count += cstrs_b.count;
+    cstrs_a.capacity -= cstrs_b.count;
+    return cstrs_a;
 }
 
 int cstr_ends_with(Cstr cstr, Cstr postfix)
