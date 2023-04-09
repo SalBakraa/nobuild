@@ -260,6 +260,8 @@ void chain_echo(Chain chain);
 
 void rebuild_urself(const char *binary_path, const char *source_path);
 
+Cstr path_no_ext(Cstr path);
+
 int is_path1_modified_after_path2(Cstr path1, Cstr path2);
 #define IS_NEWER(path1, path2) is_path1_modified_after_path2(path1, path2)
 
@@ -951,6 +953,24 @@ void chain_echo(Chain chain)
     }
 
     printf("\n");
+}
+
+Cstr path_no_ext(Cstr path)
+{
+    size_t n = strlen(path);
+    while (n > 0 && path[n - 1] != '.') {
+        n -= 1;
+    }
+
+    if (n > 0) {
+        char *result = malloc(n);
+        memcpy(result, path, n);
+        result[n - 1] = '\0';
+
+        return result;
+    } else {
+        return path;
+    }
 }
 
 Cstr path_dirname(Cstr path)
