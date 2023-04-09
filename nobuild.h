@@ -303,6 +303,13 @@ void path_rename(Cstr old_path, Cstr new_path);
         path_rename(old_path, new_path);              \
     } while (0)
 
+void path_copy(Cstr old_path, Cstr new_path);
+#define COPY(old_path, new_path)                    \
+    do {                                            \
+        INFO("COPY: %s -> %s", old_path, new_path); \
+        path_copy(old_path, new_path);              \
+    } while(0)
+
 void path_rm(Cstr path);
 #define RM(path)                                \
     do {                                        \
@@ -1300,6 +1307,48 @@ void path_mkdirs(Cstr_Array path)
                 PANIC("could not create directory %s: %s", result, strerror(errno));
             }
         }
+    }
+}
+
+void path_copy(Cstr old_path, Cstr new_path) {
+    if (IS_DIR(old_path)) {
+        path_mkdirs(cstr_array_make(new_path, NULL));
+        FOREACH_FILE_IN_DIR(file, old_path, {
+            if (strcmp(file, ".") == 0 || strcmp(file, "..") == 0) {
+                continue;
+            }
+
+            path_copy(PATH(old_path, file), PATH(new_path, file));
+        });
+    } else {
+        Fd f1 = fd_open_for_read(old_path);
+        Fd f2 = fd_open_for_write(new_path);
+
+        unsigned char buffer[4096];
+        while (1) {
+            ssize_t bytes = read(f1, buffer, 4096);
+            if (bytes == 0) {
+                break;
+            }
+
+            if (bytes == -1) {
+                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, strerror(errno));
+                break;
+            }
+
+            bytes = write(f2, buffer, bytes);
+            if (bytes == 0) {
+                break;
+            }
+
+            if (bytes == -1) {
+                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, strerror(errno));
+                break;
+            }
+        }
+
+        fd_close(f1);
+        fd_close(f2);
     }
 }
 
