@@ -1387,6 +1387,16 @@ void path_rm(Cstr path)
 
 int is_path1_modified_after_path2(const char *path1, const char *path2)
 {
+    // Warn the user that the path is missing
+    if (!PATH_EXISTS(path1)) {
+        WARN("file %s does not exist", path2);
+        return 0;
+    }
+
+    if (!PATH_EXISTS(path2)) {
+        return 1;
+    }
+
 #ifdef _WIN32
     FILETIME path1_time, path2_time;
 
