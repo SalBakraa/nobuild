@@ -276,6 +276,9 @@ void rebuild_urself(const char *binary_path, const char *source_path);
 int path_is_dir(Cstr path);
 #define IS_DIR(path) path_is_dir(path)
 
+int path_is_file(Cstr path);
+#define IS_FILE(path) path_is_file(path)
+
 int path_exists(Cstr path);
 #define PATH_EXISTS(path) path_exists(path)
 
@@ -1148,6 +1151,28 @@ int path_is_dir(Cstr path)
     }
 
     return S_ISDIR(statbuf.st_mode);
+#endif // _WIN32
+}
+
+int path_is_file(Cstr path)
+{
+#ifndef _WIN32
+    struct stat statbuf = {0};
+    if (stat(path, &statbuf) < 0) {
+        if (errno == ENOENT) {
+            errno = 0;
+            return 0;
+        }
+
+        PANIC("Could not retrieve information about file %s: %s",
+              path, strerror(errno));
+    }
+
+    return S_ISREG(statbuf.st_mode);
+#else
+    DWORD dwAttrib = GetFileAttributes(path);
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+            !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #endif // _WIN32
 }
 
