@@ -331,6 +331,12 @@ void erro(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 void panic(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 #define PANIC(fmt, ...) panic("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
+void todo(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define TODO(fmt, ...) todo("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void todo_safe(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define TODO_SAFE(fmt, ...) todo_safe("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
 char *shift_args(int *argc, char ***argv);
 
 #endif  // NOBUILD_H_
@@ -1145,6 +1151,23 @@ void panic(Cstr fmt, ...)
     VLOG(stderr, "ERRO", fmt, args);
     va_end(args);
     exit(1);
+}
+
+void todo(Cstr fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    VLOG(stderr, "TODO", fmt, args);
+    va_end(args);
+    exit(1);
+}
+
+void todo_safe(Cstr fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    VLOG(stderr, "TODO", fmt, args);
+    va_end(args);
 }
 
 char *shift_args(int *argc, char ***argv)
