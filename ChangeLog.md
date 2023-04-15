@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.4] - 2023-04-15
+
+### Changed
+
+- Deprecated `cst_no_ext`, user `path_no_ext` instead.
+- Prevent `is_path_1_modified_after_path2` from causing a crash if either path didn't exist.
+
+### Added
+
+- Added `path_no_ext` function to replace `cstr_no_ext`.
+- Forwrad declared `is_path1_modified_after_path2` function and added `IS_NEWER` macro..
+- Added `path_copy` function and `COPY` helper macro for recursive copying.
+- Added `path_dirname` function and `DIRNAME` helper macro to extract path dirname.
+- Added `path_basename` function and `BASENAME` helper macro to extract path basename.
+- Added `path_is_file` function and `IS_FILE` helper macro.
+
 ## [0.3.3] - 2023-04-15
 
 ### Changed
