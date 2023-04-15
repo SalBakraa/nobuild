@@ -98,6 +98,9 @@ typedef const char * Cstr;
 int cstr_ends_with(Cstr cstr, Cstr postfix);
 #define ENDS_WITH(cstr, postfix) cstr_ends_with(cstr, postfix)
 
+int cstr_starts_with(Cstr cstr, Cstr prefix);
+#define STARTS_WITH(cstr, prefix) cstr_starts_with(cstr, prefix)
+
 Cstr cstr_no_ext(Cstr path);
 #define NOEXT(path) cstr_no_ext(path)
 
@@ -513,6 +516,13 @@ int cstr_ends_with(Cstr cstr, Cstr postfix)
     const size_t postfix_len = strlen(postfix);
     return postfix_len <= cstr_len
            && strcmp(cstr + cstr_len - postfix_len, postfix) == 0;
+}
+
+int cstr_starts_with(Cstr cstr, Cstr prefix)
+{
+    const size_t cstr_len = strlen(cstr);
+    const size_t prefix_len = strlen(prefix);
+    return prefix_len <= cstr_len && strncmp(cstr, prefix, prefix_len) == 0;
 }
 
 Cstr cstr_no_ext(Cstr path)
