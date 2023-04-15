@@ -1343,7 +1343,7 @@ void path_copy(Cstr old_path, Cstr new_path) {
 
         unsigned char buffer[4096];
         while (1) {
-            ssize_t bytes = read(f1, buffer, 4096);
+            int bytes = read(f1, buffer, 4096);
             if (bytes == 0) {
                 break;
             }
