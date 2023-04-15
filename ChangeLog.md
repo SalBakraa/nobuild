@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.3] - 2023-04-15
+
+### Changed
+
+- Logging functions print the calling function and source line.
+
+### Added
+
+- Define `TODO` and `TODO_SAFE` macro to log unimplemented features.
+
 ## [0.3.2] - 2023-04-15
 
 ### Changed
