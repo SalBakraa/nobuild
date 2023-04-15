@@ -98,20 +98,31 @@ typedef const char * Cstr;
 int cstr_ends_with(Cstr cstr, Cstr postfix);
 #define ENDS_WITH(cstr, postfix) cstr_ends_with(cstr, postfix)
 
+int cstr_starts_with(Cstr cstr, Cstr prefix);
+#define STARTS_WITH(cstr, prefix) cstr_starts_with(cstr, prefix)
+
 Cstr cstr_no_ext(Cstr path);
 #define NOEXT(path) cstr_no_ext(path)
 
 typedef struct {
     Cstr *elems;
     size_t count;
+    size_t capacity;
 } Cstr_Array;
 
 Cstr_Array cstr_array_make(Cstr first, ...);
 #define CSTR_ARRAY_MAKE(first, ...) cstr_array_make(first, ##__VA_ARGS__, NULL)
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
-Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
 
+Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
+
+Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
+
+Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim);
+#define SPLIT(cstr, delim) cstr_array_from_cstr(cstr, delim)
+
+Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
 #define JOIN(sep, ...) cstr_array_join(sep, cstr_array_make(__VA_ARGS__, NULL))
 #define CONCAT(...) JOIN("", __VA_ARGS__)
 #define PATH(...) JOIN(PATH_SEP, __VA_ARGS__)
@@ -436,13 +447,72 @@ int closedir(DIR *dirp)
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
 {
-    Cstr_Array result = {
-        .count = cstrs.count + 1
-    };
-    result.elems = malloc(sizeof(result.elems[0]) * result.count);
-    memcpy(result.elems, cstrs.elems, cstrs.count * sizeof(result.elems[0]));
-    result.elems[cstrs.count] = cstr;
-    return result;
+    if (cstrs.capacity < 1) {
+        cstrs.elems = realloc(cstrs.elems, sizeof *cstrs.elems * (cstrs.count + 10));
+        cstrs.capacity += 10;
+        if (cstrs.elems == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+    }
+
+    cstrs.elems[cstrs.count++] = cstr;
+    cstrs.capacity--;
+    return cstrs;
+}
+
+
+Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
+{
+    if (cstrs.count == 0) {
+        return NULL;
+    }
+
+    if (cstr == NULL) {
+        cstrs.capacity++;
+        return cstrs.elems[--cstrs.count];
+    }
+
+    const size_t cstr_len = strlen(cstr);
+
+    // Find the index of the element to be removed
+    size_t index = -1;
+    for (size_t i = 0; i < cstrs.count; i++) {
+        const size_t elem_len = strlen(cstrs.elems[i]);
+        if (elem_len == cstr_len && strcmp(cstrs.elems[i], cstr) == 0) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1) {
+        return NULL;
+    }
+
+    // Shift elements to the left
+    Cstr ret = cstrs.elems[index];
+    for (size_t i = index; i < cstrs.count - 1; i++) {
+        cstrs.elems[i] = cstrs.elems[i + 1];
+    }
+    cstrs.count--;
+    cstrs.capacity++;
+
+    // TODO: Might want to resize array if capacity is too high
+}
+
+Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
+{
+    if (cstrs_a.capacity < cstrs_b.count) {
+        cstrs_a.elems = realloc(cstrs_a.elems, sizeof *cstrs_a.elems * (cstrs_a.count + cstrs_b.count));
+        cstrs_a.capacity += cstrs_b.count;
+        if (cstrs_a.elems == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+    }
+
+    memcpy(cstrs_a.elems + cstrs_a.count, cstrs_b.elems, sizeof *cstrs_a.elems * cstrs_b.count);
+    cstrs_a.count += cstrs_b.count;
+    cstrs_a.capacity -= cstrs_b.count;
+    return cstrs_a;
 }
 
 int cstr_ends_with(Cstr cstr, Cstr postfix)
@@ -451,6 +521,13 @@ int cstr_ends_with(Cstr cstr, Cstr postfix)
     const size_t postfix_len = strlen(postfix);
     return postfix_len <= cstr_len
            && strcmp(cstr + cstr_len - postfix_len, postfix) == 0;
+}
+
+int cstr_starts_with(Cstr cstr, Cstr prefix)
+{
+    const size_t cstr_len = strlen(cstr);
+    const size_t prefix_len = strlen(prefix);
+    return prefix_len <= cstr_len && strncmp(cstr, prefix, prefix_len) == 0;
 }
 
 Cstr cstr_no_ext(Cstr path)
@@ -480,7 +557,6 @@ Cstr_Array cstr_array_make(Cstr first, ...)
     }
 
     result.count += 1;
-
     va_list args;
     va_start(args, first);
     for (Cstr next = va_arg(args, Cstr);
@@ -490,12 +566,12 @@ Cstr_Array cstr_array_make(Cstr first, ...)
     }
     va_end(args);
 
-    result.elems = malloc(sizeof(result.elems[0]) * result.count);
+    result.elems = malloc(sizeof *result.elems * result.count);
     if (result.elems == NULL) {
         PANIC("could not allocate memory: %s", strerror(errno));
     }
-    result.count = 0;
 
+    result.count = 0;
     result.elems[result.count++] = first;
 
     va_start(args, first);
@@ -507,6 +583,87 @@ Cstr_Array cstr_array_make(Cstr first, ...)
     va_end(args);
 
     return result;
+}
+
+Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)
+{
+    size_t len = strlen(cstr);
+    size_t d_len = strlen(delim);
+    size_t substr_count = 1;
+    for (size_t i = 0; i < len; ++i) {
+        if ((len - i) < d_len) {
+            break;
+        }
+
+        size_t delim_found = 0;
+        for (size_t j = 0; j < d_len; ++j) {
+            if (cstr[i+j] != delim[j]) {
+                delim_found = 0;
+                break;
+            }
+            delim_found = 1;
+        }
+
+        if (delim_found) {
+            substr_count++;
+            i += d_len - 1;
+        }
+    }
+
+    // if dlen == 0 or was never found
+    if (substr_count == 1) {
+        // TODO: differentiate between delim == null and delim == "" and delim not found
+        //       Split the string into an array of strings, where each string is a single character
+
+        return cstr_array_make(cstr);
+    }
+
+    Cstr_Array ret = { .count = substr_count };
+    ret.elems = malloc(sizeof(Cstr) * ret.count);
+    if (ret.elems == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    size_t substr_start = 0;
+    size_t substr_index = 0;
+    for (size_t i = 0; i < len; ++i) {
+        if ((len - i) < d_len) {
+            break;
+        }
+
+        size_t delim_found = 0;
+        for (size_t j = 0; j < d_len; ++j) {
+            if (cstr[i+j] != delim[j]) {
+                delim_found = 0;
+                break;
+            }
+            delim_found = 1;
+        }
+
+        if (!delim_found) {
+            continue;
+        }
+
+        size_t substr_len = i - substr_start;
+        char *substr = calloc(substr_len + 1, sizeof(unsigned char));
+        if (substr == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+
+        ret.elems[substr_index++] = memcpy(substr, (cstr+substr_start), substr_len * sizeof(unsigned char));
+        i += d_len - 1;
+        substr_start = i + 1;
+    }
+
+    // Add the last substring
+    size_t substr_len = len - substr_start;
+    char *substr = malloc(substr_len * sizeof(unsigned char));
+    if (substr == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    ret.elems[substr_index++] = memcpy(substr, (cstr+substr_start), substr_len * sizeof(unsigned char));
+    return ret;
 }
 
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs)
