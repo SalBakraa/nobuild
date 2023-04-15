@@ -1,8 +1,12 @@
 # Changelog
 
-# [0.3.0-dev]
+## [0.3.1]
 
-_Not Released Yet_
+### Added
+
+- Define `CSTR_ARRAY_MAKE` macro that automatically null terminates the var args list passed to it
+
+## [0.3.0]
 
 ### Changed
 
