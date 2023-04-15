@@ -3,7 +3,7 @@ on: [push, pull_request]
 
 jobs:
   build-linux-gcc:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - name: build
@@ -14,7 +14,7 @@ jobs:
           CC: gcc
           CXX: g++
   build-linux-clang:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - name: build
@@ -36,7 +36,7 @@ jobs:
           CC: clang
           CXX: clang++
   build-windows-msvc:
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
         # this runs vcvarsall for us, so we get the MSVC toolchain in PATH.
