@@ -1,12 +1,25 @@
 # Changelog
 
-## [0.3.1]
+## [0.3.2] - 2023-04-15
+
+### Changed
+
+- Add `capacity` field to `Cstr_Array` struct.
+
+### Added
+
+- Add `cstr_starts_with` function and `STARTS_WITH` macro helper to check if `Cstr` starts with a prefix
+- Add `cstr_array_from_cstr` function and `SPLIT` macro helper to split `Cstr` to `Cstr_Array`
+- Add `cstr_array_remove` function to remove a specific string from a `Cstr_Array`
+- Add `cstr_array_concat` function to concatenate a `Cstr_Array` into another.
+
+## [0.3.1] - 2023-04-15
 
 ### Added
 
 - Define `CSTR_ARRAY_MAKE` macro that automatically null terminates the var args list passed to it
 
-## [0.3.0]
+## [0.3.0] - 2021-07-30
 
 ### Changed
 
