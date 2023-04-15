@@ -115,7 +115,7 @@ Cstr_Array cstr_array_make(Cstr first, ...);
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
 
-Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
+Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
@@ -472,10 +472,13 @@ Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
         return cstrs.elems[--cstrs.count];
     }
 
+    const size_t cstr_len = strlen(cstr);
+
     // Find the index of the element to be removed
     size_t index = -1;
     for (size_t i = 0; i < cstrs.count; i++) {
-        if (strcmp(cstrs.elems[i], element) == 0) {
+        const size_t elem_len = strlen(cstrs.elems[i]);
+        if (elem_len == cstr_len && strcmp(cstrs.elems[i], cstr) == 0) {
             index = i;
             break;
         }
@@ -506,7 +509,7 @@ Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
         }
     }
 
-    memcpy(cstrs_a.elems + cstrs_a.count, cstrs_b.elems, *cstrs_a.elems * cstrs_b.count);
+    memcpy(cstrs_a.elems + cstrs_a.count, cstrs_b.elems, sizeof *cstrs_a.elems * cstrs_b.count);
     cstrs_a.count += cstrs_b.count;
     cstrs_a.capacity -= cstrs_b.count;
     return cstrs_a;
