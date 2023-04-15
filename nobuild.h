@@ -1159,7 +1159,7 @@ Cstr path_dirname(Cstr path)
     }
 
     int res_len = last_slash - path;
-    Cstr result = malloc(res_len);
+    char* result = malloc(res_len);
     strncpy(result, path, res_len);
     result[res_len] = '\0';
     return result;
