@@ -22,6 +22,7 @@ typedef int Fd;
 #    define WIN32_MEAN_AND_LEAN
 #    include <windows.h>
 #    include <process.h>
+#    include <direct.h>
 #    define PATH_SEP "\\"
 typedef HANDLE Pid;
 typedef HANDLE Fd;
@@ -1314,6 +1315,7 @@ void path_mkdirs(Cstr_Array path)
 
         result[len] = '\0';
 
+#ifndef _WIN32
         if (mkdir(result, 0755) < 0) {
             if (errno == EEXIST) {
                 errno = 0;
@@ -1322,6 +1324,16 @@ void path_mkdirs(Cstr_Array path)
                 PANIC("could not create directory %s: %s", result, strerror(errno));
             }
         }
+#else
+        if (mkdir(result) < 0) {
+            if (errno == EEXIST) {
+                errno = 0;
+                WARN("directory %s already exists", result);
+            } else {
+                PANIC("could not create directory %s: %s", result, strerror(errno));
+            }
+        }
+#endif
     }
 }
 
