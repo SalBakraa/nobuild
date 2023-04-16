@@ -14,7 +14,7 @@ typedef pid_t Pid;
 typedef int Fd;
 #else
 #    define WIN32_MEAN_AND_LEAN
-#    include "windows.h"
+#    include <windows.h>
 #    include <process.h>
 #    define PATH_SEP "\\"
 typedef HANDLE Pid;
