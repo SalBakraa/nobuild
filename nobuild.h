@@ -266,7 +266,7 @@ void chain_echo(Chain chain);
             Cmd cmd = {                                                \
                 .line = {                                              \
                     .elems = (Cstr*) argv,                             \
-                    .count = argc,                                     \
+                    .count = (size_t) argc,                            \
                 },                                                     \
             };                                                         \
             INFO("CMD: %s", cmd_show(cmd));                            \
@@ -905,7 +905,7 @@ Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
             NULL,
             // TODO(#33): cmd_run_async on Windows does not render command line properly
             // It may require wrapping some arguments with double-quotes if they contains spaces, etc.
-            cstr_array_join(" ", cmd.line),
+            (LPSTR) cstr_array_join(" ", cmd.line),
             NULL,
             NULL,
             TRUE,
@@ -1447,12 +1447,12 @@ int is_path1_modified_after_path2(const char *path1, const char *path2)
     if (stat(path1, &statbuf) < 0) {
         PANIC("could not stat %s: %s\n", path1, strerror(errno));
     }
-    int path1_time = statbuf.st_mtime;
+    time_t path1_time = statbuf.st_mtime;
 
     if (stat(path2, &statbuf) < 0) {
         PANIC("could not stat %s: %s\n", path2, strerror(errno));
     }
-    int path2_time = statbuf.st_mtime;
+    time_t  path2_time = statbuf.st_mtime;
 
     return path1_time > path2_time;
 #endif
