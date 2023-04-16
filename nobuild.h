@@ -1051,9 +1051,6 @@ void chain_run_sync(Chain chain)
 
     if (chain.input_filepath) {
         fdin = fd_open_for_read(chain.input_filepath);
-        if (fdin < 0) {
-            PANIC("could not open file %s: %s", chain.input_filepath, strerror(errno));
-        }
         fdprev = &fdin;
     }
 
@@ -1077,11 +1074,6 @@ void chain_run_sync(Chain chain)
 
         if (chain.output_filepath) {
             fdout = fd_open_for_write(chain.output_filepath);
-            if (fdout < 0) {
-                PANIC("could not open file %s: %s",
-                      chain.output_filepath,
-                      strerror(errno));
-            }
             fdnext = &fdout;
         }
 
