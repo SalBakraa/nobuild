@@ -1285,6 +1285,34 @@ void path_rename(const char *old_path, const char *new_path)
 #endif // _WIN32
 }
 
+int nobuild__mkdir(const char *pathname, unsigned int mode)
+{
+#ifndef _WIN32
+    return mkdir(pathname, mode);
+#else
+    #pragma unused(mode)
+    return _mkdir(pathname);
+#endif
+}
+
+int nobuild__rmdir(const char *pathname)
+{
+#ifndef _WIN32
+    return rmdir(pathname);
+#else
+    return _rmdir(pathname);
+#endif
+}
+
+int nobuild__unlink(const char *pathname)
+{
+#ifndef _WIN32
+    return unlink(pathname);
+#else
+    return _unlink(pathname);
+#endif
+}
+
 void path_mkdirs(Cstr_Array path)
 {
     if (path.count == 0) {
@@ -1315,8 +1343,7 @@ void path_mkdirs(Cstr_Array path)
 
         result[len] = '\0';
 
-#ifndef _WIN32
-        if (mkdir(result, 0755) < 0) {
+        if (nobuild__mkdir(result, 0755) < 0) {
             if (errno == EEXIST) {
                 errno = 0;
                 WARN("directory %s already exists", result);
@@ -1324,16 +1351,6 @@ void path_mkdirs(Cstr_Array path)
                 PANIC("could not create directory %s: %s", result, strerror(errno));
             }
         }
-#else
-        if (mkdir(result) < 0) {
-            if (errno == EEXIST) {
-                errno = 0;
-                WARN("directory %s already exists", result);
-            } else {
-                PANIC("could not create directory %s: %s", result, strerror(errno));
-            }
-        }
-#endif
     }
 }
 
@@ -1403,7 +1420,7 @@ void path_rm(Cstr path)
             }
         });
 
-        if (rmdir(path) < 0) {
+        if (nobuild__rmdir(path) < 0) {
             if (errno == ENOENT) {
                 errno = 0;
                 WARN("directory %s does not exist", path);
@@ -1412,7 +1429,7 @@ void path_rm(Cstr path)
             }
         }
     } else {
-        if (unlink(path) < 0) {
+        if (nobuild__unlink(path) < 0) {
             if (errno == ENOENT) {
                 errno = 0;
                 WARN("file %s does not exist", path);
