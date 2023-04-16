@@ -163,22 +163,42 @@ typedef struct {
     Cstr_Array args;
 } Chain_Token;
 
+#ifndef _WIN32
+Chain_Token_Type __attribute__((deprecated)) IN_is_deprecated_use_CHAIN_IN_instead(Chain_Token_Type t) { return t; }
+Chain_Token_Type __attribute__((deprecated)) OLD_is_deprecated_use_CHAIN_OLD_instead(Chain_Token_Type t) { return t; }
+#else
+Chain_Token_Type __declspec(deprecated("IN is already defined by WinAPI, use `CHAIN_IN` instead.")) IN_is_deprecated_use_CHAIN_IN_instead(Chain_Token_Type t) { return t; }
+Chain_Token_Type __declspec(deprecated("OUT is already defined by WinAPI, use `CHAIN_OUT` instead.")) OLD_is_deprecated_use_CHAIN_OLD_instead(Chain_Token_Type t) { return t; }
+#endif
+
 // TODO(#17): IN and OUT are already taken by WinAPI
 #define IN(path) \
     (Chain_Token) { \
-        .type = CHAIN_TOKEN_IN, \
+        .type = IN_is_deprecated_use_CHAIN_IN_instead(CHAIN_TOKEN_IN), \
         .args = cstr_array_make(path, NULL) \
     }
 
 #define OUT(path) \
     (Chain_Token) { \
-        .type = CHAIN_TOKEN_OUT, \
+        .type = OLD_is_deprecated_use_CHAIN_OLD_instead(CHAIN_TOKEN_OUT), \
         .args = cstr_array_make(path, NULL) \
     }
 
-#define CHAIN_CMD(...) \
-    (Chain_Token) { \
-        .type = CHAIN_TOKEN_CMD, \
+#define CHAIN_IN(path)                      \
+    (Chain_Token) {                         \
+        .type = CHAIN_TOKEN_IN,             \
+        .args = cstr_array_make(path, NULL) \
+    }
+
+#define CHAIN_OUT(path)                     \
+    (Chain_Token) {                         \
+        .type = CHAIN_TOKEN_OUT,            \
+        .args = cstr_array_make(path, NULL) \
+    }
+
+#define CHAIN_CMD(...)                             \
+    (Chain_Token) {                                \
+        .type = CHAIN_TOKEN_CMD,                   \
         .args = cstr_array_make(__VA_ARGS__, NULL) \
     }
 
