@@ -20,8 +20,9 @@ typedef pid_t Pid;
 typedef int Fd;
 #else
 #    define WIN32_MEAN_AND_LEAN
-#    include "windows.h"
+#    include <windows.h>
 #    include <process.h>
+#    include <direct.h>
 #    define PATH_SEP "\\"
 typedef HANDLE Pid;
 typedef HANDLE Fd;
@@ -180,22 +181,42 @@ typedef struct {
     Cstr_Array args;
 } Chain_Token;
 
+#ifndef _WIN32
+Chain_Token_Type __attribute__((deprecated)) IN_is_deprecated_use_CHAIN_IN_instead(Chain_Token_Type t) { return t; }
+Chain_Token_Type __attribute__((deprecated)) OLD_is_deprecated_use_CHAIN_OLD_instead(Chain_Token_Type t) { return t; }
+#else
+Chain_Token_Type __declspec(deprecated("IN is already defined by WinAPI, use `CHAIN_IN` instead.")) IN_is_deprecated_use_CHAIN_IN_instead(Chain_Token_Type t) { return t; }
+Chain_Token_Type __declspec(deprecated("OUT is already defined by WinAPI, use `CHAIN_OUT` instead.")) OLD_is_deprecated_use_CHAIN_OLD_instead(Chain_Token_Type t) { return t; }
+#endif
+
 // TODO(#17): IN and OUT are already taken by WinAPI
 #define IN(path) \
     (Chain_Token) { \
-        .type = CHAIN_TOKEN_IN, \
+        .type = IN_is_deprecated_use_CHAIN_IN_instead(CHAIN_TOKEN_IN), \
         .args = cstr_array_make(path, NULL) \
     }
 
 #define OUT(path) \
     (Chain_Token) { \
-        .type = CHAIN_TOKEN_OUT, \
+        .type = OLD_is_deprecated_use_CHAIN_OLD_instead(CHAIN_TOKEN_OUT), \
         .args = cstr_array_make(path, NULL) \
     }
 
-#define CHAIN_CMD(...) \
-    (Chain_Token) { \
-        .type = CHAIN_TOKEN_CMD, \
+#define CHAIN_IN(path)                      \
+    (Chain_Token) {                         \
+        .type = CHAIN_TOKEN_IN,             \
+        .args = cstr_array_make(path, NULL) \
+    }
+
+#define CHAIN_OUT(path)                     \
+    (Chain_Token) {                         \
+        .type = CHAIN_TOKEN_OUT,            \
+        .args = cstr_array_make(path, NULL) \
+    }
+
+#define CHAIN_CMD(...)                             \
+    (Chain_Token) {                                \
+        .type = CHAIN_TOKEN_CMD,                   \
         .args = cstr_array_make(__VA_ARGS__, NULL) \
     }
 
@@ -266,7 +287,7 @@ void chain_echo(Chain chain);
             Cmd cmd = {                                                \
                 .line = {                                              \
                     .elems = (Cstr*) argv,                             \
-                    .count = argc,                                     \
+                    .count = (size_t) argc,                            \
                 },                                                     \
             };                                                         \
             INFO("CMD: %s", cmd_show(cmd));                            \
@@ -394,17 +415,15 @@ LPSTR GetLastErrorAsString(void)
     assert(errorMessageId != 0);
 
     LPSTR messageBuffer = NULL;
-
-    DWORD size =
-        FormatMessage(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, // DWORD   dwFlags,
-            NULL, // LPCVOID lpSource,
-            errorMessageId, // DWORD   dwMessageId,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // DWORD   dwLanguageId,
-            (LPSTR) &messageBuffer, // LPTSTR  lpBuffer,
-            0, // DWORD   nSize,
-            NULL // va_list *Arguments
-        );
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, // DWORD   dwFlags,
+        NULL, // LPCVOID lpSource,
+        errorMessageId, // DWORD   dwMessageId,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // DWORD   dwLanguageId,
+        (LPSTR) &messageBuffer, // LPTSTR  lpBuffer,
+        0, // DWORD   nSize,
+        NULL // va_list *Arguments
+    );
 
     return messageBuffer;
 }
@@ -905,7 +924,7 @@ Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
             NULL,
             // TODO(#33): cmd_run_async on Windows does not render command line properly
             // It may require wrapping some arguments with double-quotes if they contains spaces, etc.
-            cstr_array_join(" ", cmd.line),
+            (LPSTR) cstr_array_join(" ", cmd.line),
             NULL,
             NULL,
             TRUE,
@@ -1051,9 +1070,6 @@ void chain_run_sync(Chain chain)
 
     if (chain.input_filepath) {
         fdin = fd_open_for_read(chain.input_filepath);
-        if (fdin < 0) {
-            PANIC("could not open file %s: %s", chain.input_filepath, strerror(errno));
-        }
         fdprev = &fdin;
     }
 
@@ -1077,11 +1093,6 @@ void chain_run_sync(Chain chain)
 
         if (chain.output_filepath) {
             fdout = fd_open_for_write(chain.output_filepath);
-            if (fdout < 0) {
-                PANIC("could not open file %s: %s",
-                      chain.output_filepath,
-                      strerror(errno));
-            }
             fdnext = &fdout;
         }
 
@@ -1294,6 +1305,34 @@ void path_rename(const char *old_path, const char *new_path)
 #endif // _WIN32
 }
 
+int nobuild__mkdir(const char *pathname, unsigned int mode)
+{
+#ifndef _WIN32
+    return mkdir(pathname, mode);
+#else
+    #pragma unused(mode)
+    return _mkdir(pathname);
+#endif
+}
+
+int nobuild__rmdir(const char *pathname)
+{
+#ifndef _WIN32
+    return rmdir(pathname);
+#else
+    return _rmdir(pathname);
+#endif
+}
+
+int nobuild__unlink(const char *pathname)
+{
+#ifndef _WIN32
+    return unlink(pathname);
+#else
+    return _unlink(pathname);
+#endif
+}
+
 void path_mkdirs(Cstr_Array path)
 {
     if (path.count == 0) {
@@ -1324,7 +1363,7 @@ void path_mkdirs(Cstr_Array path)
 
         result[len] = '\0';
 
-        if (mkdir(result, 0755) < 0) {
+        if (nobuild__mkdir(result, 0755) < 0) {
             if (errno == EEXIST) {
                 errno = 0;
                 WARN("directory %s already exists", result);
@@ -1401,7 +1440,7 @@ void path_rm(Cstr path)
             }
         });
 
-        if (rmdir(path) < 0) {
+        if (nobuild__rmdir(path) < 0) {
             if (errno == ENOENT) {
                 errno = 0;
                 WARN("directory %s does not exist", path);
@@ -1410,7 +1449,7 @@ void path_rm(Cstr path)
             }
         }
     } else {
-        if (unlink(path) < 0) {
+        if (nobuild__unlink(path) < 0) {
             if (errno == ENOENT) {
                 errno = 0;
                 WARN("file %s does not exist", path);
@@ -1455,12 +1494,12 @@ int is_path1_modified_after_path2(const char *path1, const char *path2)
     if (stat(path1, &statbuf) < 0) {
         PANIC("could not stat %s: %s\n", path1, strerror(errno));
     }
-    int path1_time = statbuf.st_mtime;
+    time_t path1_time = statbuf.st_mtime;
 
     if (stat(path2, &statbuf) < 0) {
         PANIC("could not stat %s: %s\n", path2, strerror(errno));
     }
-    int path2_time = statbuf.st_mtime;
+    time_t  path2_time = statbuf.st_mtime;
 
     return path1_time > path2_time;
 #endif
