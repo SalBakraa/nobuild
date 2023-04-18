@@ -359,7 +359,7 @@ void path_rm(Cstr path);
         closedir(dir);                                  \
     } while(0)
 
-void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args);
+NOBUILD_DEPRECATED(void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args));
 
 void info(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 #define INFO(fmt, ...) info("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
@@ -1546,18 +1546,24 @@ int is_path1_modified_after_path2(const char *path1, const char *path2)
 #endif
 }
 
-void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args)
+void nobuild__vlog(FILE *stream, Cstr tag, Cstr fmt, va_list args)
 {
     fprintf(stream, "[%s] ", tag);
     vfprintf(stream, fmt, args);
     fprintf(stream, "\n");
 }
 
+void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args)
+{
+    WARN("This function is deprecated.");
+    nobuild__vlog(stream, tag, fmt, args);
+}
+
 void info(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    VLOG(stderr, "INFO", fmt, args);
+    nobuild__vlog(stderr, "INFO", fmt, args);
     va_end(args);
 }
 
@@ -1565,7 +1571,7 @@ void warn(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    VLOG(stderr, "WARN", fmt, args);
+    nobuild__vlog(stderr, "WARN", fmt, args);
     va_end(args);
 }
 
@@ -1573,7 +1579,7 @@ void erro(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    VLOG(stderr, "ERRO", fmt, args);
+    nobuild__vlog(stderr, "ERRO", fmt, args);
     va_end(args);
 }
 
@@ -1581,7 +1587,7 @@ void panic(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    VLOG(stderr, "ERRO", fmt, args);
+    nobuild__vlog(stderr, "ERRO", fmt, args);
     va_end(args);
     exit(1);
 }
@@ -1590,7 +1596,7 @@ void todo(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    VLOG(stderr, "TODO", fmt, args);
+    nobuild__vlog(stderr, "TODO", fmt, args);
     va_end(args);
     exit(1);
 }
@@ -1599,7 +1605,7 @@ void todo_safe(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    VLOG(stderr, "TODO", fmt, args);
+    nobuild__vlog(stderr, "TODO", fmt, args);
     va_end(args);
 }
 
