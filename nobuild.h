@@ -1,10 +1,10 @@
 #ifndef NOBUILD_H_
 #define NOBUILD_H_
 
-#ifdef __GNUC__
-#	define NOBUILD_DEPRECATED(func) func __attribute__ ((deprecated))
-#else
-#	define NOBUILD_DEPRECATED(func) func
+#if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
+#	define NOBUILD__DEPRECATED(func) __attribute__ ((deprecated)) func
+#elif defined(_MSC_VER)
+#	define NOBUILD__DEPRECATED(func) __declspec (deprecated) func
 #endif
 
 #ifndef _WIN32
@@ -359,7 +359,7 @@ void path_rm(Cstr path);
         closedir(dir);                                  \
     } while(0)
 
-NOBUILD_DEPRECATED(void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args));
+NOBUILD__DEPRECATED(void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args));
 
 void info(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 #define INFO(fmt, ...) info("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
