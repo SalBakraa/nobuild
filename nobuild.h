@@ -355,7 +355,7 @@ void path_rm(Cstr path);
         DIR *dir = opendir(dirpath);                    \
         if (dir == NULL) {                              \
             PANIC("could not open directory %s: %s",    \
-                  dirpath, strerror(errno));            \
+                  dirpath, nobuild__strerror(errno));   \
         }                                               \
         errno = 0;                                      \
         while ((dp = readdir(dir))) {                   \
@@ -365,7 +365,7 @@ void path_rm(Cstr path);
                                                         \
         if (errno > 0) {                                \
             PANIC("could not read directory %s: %s",    \
-                  dirpath, strerror(errno));            \
+                  dirpath, nobuild__strerror(errno));   \
         }                                               \
                                                         \
         closedir(dir);                                  \
@@ -478,8 +478,9 @@ struct dirent *readdir(DIR *dirp)
 
     memset(dirp->dirent->d_name, 0, sizeof(dirp->dirent->d_name));
 
-    strncpy(
+    strncpy_s(
         dirp->dirent->d_name,
+        sizeof(dirp->dirent->d_name),
         dirp->data.cFileName,
         sizeof(dirp->dirent->d_name) - 1);
 
@@ -505,13 +506,24 @@ int closedir(DIR *dirp)
 // minirent.h IMPLEMENTATION END ////////////////////////////////////////
 #endif // _WIN32
 
+Cstr nobuild__strerror(int errnum)
+{
+#ifndef _WIN32
+    return strerror(errnum);
+#else
+    static char buffer[1024];
+    strerror_s(buffer, 1024, errnum);
+    return buffer;
+#endif
+}
+
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
 {
     if (cstrs.capacity < 1) {
         cstrs.elems = realloc(cstrs.elems, sizeof *cstrs.elems * (cstrs.count + 10));
         cstrs.capacity += 10;
         if (cstrs.elems == NULL) {
-            PANIC("Could not allocate memory: %s", strerror(errno));
+            PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
         }
     }
 
@@ -562,7 +574,7 @@ Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
         cstrs_a.elems = realloc(cstrs_a.elems, sizeof *cstrs_a.elems * (cstrs_a.count + cstrs_b.count));
         cstrs_a.capacity += cstrs_b.count;
         if (cstrs_a.elems == NULL) {
-            PANIC("Could not allocate memory: %s", strerror(errno));
+            PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
         }
     }
 
@@ -613,7 +625,7 @@ Cstr_Array cstr_array_make(Cstr first, ...)
 
     result.elems = malloc(sizeof *result.elems * result.count);
     if (result.elems == NULL) {
-        PANIC("could not allocate memory: %s", strerror(errno));
+        PANIC("could not allocate memory: %s", nobuild__strerror(errno));
     }
 
     result.count = 0;
@@ -666,7 +678,7 @@ Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)
     Cstr_Array ret = { .count = substr_count };
     ret.elems = malloc(sizeof(Cstr) * ret.count);
     if (ret.elems == NULL) {
-        PANIC("Could not allocate memory: %s", strerror(errno));
+        PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
     }
 
     size_t substr_start = 0;
@@ -692,7 +704,7 @@ Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)
         size_t substr_len = i - substr_start;
         char *substr = calloc(substr_len + 1, sizeof(unsigned char));
         if (substr == NULL) {
-            PANIC("Could not allocate memory: %s", strerror(errno));
+            PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
         }
 
         ret.elems[substr_index++] = memcpy(substr, (cstr+substr_start), substr_len * sizeof(unsigned char));
@@ -704,7 +716,7 @@ Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)
     size_t substr_len = len - substr_start;
     char *substr = malloc(substr_len * sizeof(unsigned char));
     if (substr == NULL) {
-        PANIC("Could not allocate memory: %s", strerror(errno));
+        PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
     }
 
     ret.elems[substr_index++] = memcpy(substr, (cstr+substr_start), substr_len * sizeof(unsigned char));
@@ -726,7 +738,7 @@ Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs)
     const size_t result_len = (cstrs.count - 1) * sep_len + len + 1;
     char *result = malloc(sizeof(char) * result_len);
     if (result == NULL) {
-        PANIC("could not allocate memory: %s", strerror(errno));
+        PANIC("could not allocate memory: %s", nobuild__strerror(errno));
     }
 
     len = 0;
@@ -762,7 +774,7 @@ Pipe pipe_make(void)
 #else
     Fd pipefd[2];
     if (pipe(pipefd) < 0) {
-        PANIC("Could not create pipe: %s", strerror(errno));
+        PANIC("Could not create pipe: %s", nobuild__strerror(errno));
     }
 
     pip.read = pipefd[0];
@@ -777,7 +789,7 @@ Fd fd_open_for_read(Cstr path)
 #ifndef _WIN32
     Fd result = open(path, O_RDONLY);
     if (result < 0) {
-        PANIC("Could not open file %s: %s", path, strerror(errno));
+        PANIC("Could not open file %s: %s", path, nobuild__strerror(errno));
     }
     return result;
 #else
@@ -810,7 +822,7 @@ Fd fd_open_for_write(Cstr path)
                      O_WRONLY | O_CREAT | O_TRUNC,
                      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (result < 0) {
-        PANIC("could not open file %s: %s", path, strerror(errno));
+        PANIC("could not open file %s: %s", path, nobuild__strerror(errno));
     }
     return result;
 #else
@@ -871,7 +883,7 @@ void pid_wait(Pid pid)
     for (;;) {
         int wstatus = 0;
         if (waitpid(pid, &wstatus, 0) < 0) {
-            PANIC("could not wait on command (pid %d): %s", pid, strerror(errno));
+            PANIC("could not wait on command (pid %d): %s", pid, nobuild__strerror(errno));
         }
 
         if (WIFEXITED(wstatus)) {
@@ -947,7 +959,7 @@ Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
     pid_t cpid = fork();
     if (cpid < 0) {
         PANIC("Could not fork child process: %s: %s",
-              cmd_show(cmd), strerror(errno));
+              cmd_show(cmd), nobuild__strerror(errno));
     }
 
     if (cpid == 0) {
@@ -955,19 +967,19 @@ Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
 
         if (fdin) {
             if (dup2(*fdin, STDIN_FILENO) < 0) {
-                PANIC("Could not setup stdin for child process: %s", strerror(errno));
+                PANIC("Could not setup stdin for child process: %s", nobuild__strerror(errno));
             }
         }
 
         if (fdout) {
             if (dup2(*fdout, STDOUT_FILENO) < 0) {
-                PANIC("Could not setup stdout for child process: %s", strerror(errno));
+                PANIC("Could not setup stdout for child process: %s", nobuild__strerror(errno));
             }
         }
 
         if (execvp(args.elems[0], (char * const*) args.elems) < 0) {
             PANIC("Could not exec child process: %s: %s",
-                  cmd_show(cmd), strerror(errno));
+                  cmd_show(cmd), nobuild__strerror(errno));
         }
     }
 
@@ -1039,7 +1051,7 @@ Chain chain_build_from_tokens(Chain_Token first, ...)
 
     result.cmds.elems = malloc(sizeof(result.cmds.elems[0]) * result.cmds.count);
     if (result.cmds.elems == NULL) {
-        PANIC("could not allocate memory: %s", strerror(errno));
+        PANIC("could not allocate memory: %s", nobuild__strerror(errno));
     }
     result.cmds.count = 0;
 
@@ -1173,7 +1185,7 @@ Cstr path_dirname(Cstr path)
     size_t len = prefix_len+1;
     char* dirname = malloc(len);
     if (dirname == NULL) {
-        PANIC("Could not allocate memory: %s", strerror(errno));
+        PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
     }
 
     return dirname[len] = '\0', memcpy(dirname, path, len-1);
@@ -1192,11 +1204,10 @@ Cstr path_basename(Cstr path)
         size_t len = strlen(last_sep + 1);
         char* basename = malloc(len + 1);
         if (basename == NULL) {
-            PANIC("Could not allocate memory: %s", strerror(errno));
+            PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
         }
 
-        basename = strcpy(basename, last_sep+1);
-        return basename;
+        return basename[len] = '\0', memcpy(basename, last_sep + 1, len);
     }
 
     // Skip consecutive seprators
@@ -1218,7 +1229,7 @@ Cstr path_basename(Cstr path)
     size_t len = (size_t)(last_sep - start);
     char *basename = malloc(len + 1);
     if (basename == NULL) {
-        PANIC("Could not allocate memory: %s", strerror(errno));
+        PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
     }
 
     return basename[len] = '\0', memcpy(basename, start, len);
@@ -1238,7 +1249,7 @@ int path_exists(Cstr path)
         }
 
         PANIC("could not retrieve information about file %s: %s",
-              path, strerror(errno));
+              path, nobuild__strerror(errno));
     }
 
     return 1;
@@ -1261,7 +1272,7 @@ int path_is_dir(Cstr path)
         }
 
         PANIC("could not retrieve information about file %s: %s",
-              path, strerror(errno));
+              path, nobuild__strerror(errno));
     }
 
     return S_ISDIR(statbuf.st_mode);
@@ -1279,7 +1290,7 @@ int path_is_file(Cstr path)
         }
 
         PANIC("Could not retrieve information about file %s: %s",
-              path, strerror(errno));
+              path, nobuild__strerror(errno));
     }
 
     return S_ISREG(statbuf.st_mode);
@@ -1300,7 +1311,7 @@ void path_rename(const char *old_path, const char *new_path)
 #else
     if (rename(old_path, new_path) < 0) {
         PANIC("could not rename %s to %s: %s", old_path, new_path,
-              strerror(errno));
+              nobuild__strerror(errno));
     }
 #endif // _WIN32
 }
@@ -1368,7 +1379,7 @@ void path_mkdirs(Cstr_Array path)
                 errno = 0;
                 WARN("directory %s already exists", result);
             } else {
-                PANIC("could not create directory %s: %s", result, strerror(errno));
+                PANIC("could not create directory %s: %s", result, nobuild__strerror(errno));
             }
         }
     }
@@ -1393,7 +1404,7 @@ void path_copy(Cstr old_path, Cstr new_path) {
 #ifndef _WIN32
             ssize_t bytes = read(f1, buffer, sizeof buffer);
             if (bytes == -1) {
-                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, strerror(errno));
+                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, nobuild__strerror(errno));
                 break;
             }
 
@@ -1403,7 +1414,7 @@ void path_copy(Cstr old_path, Cstr new_path) {
 
             bytes = write(f2, buffer, (size_t)bytes);
             if (bytes == -1) {
-                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, strerror(errno));
+                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, nobuild__strerror(errno));
                 break;
             }
 
@@ -1445,7 +1456,7 @@ void path_rm(Cstr path)
                 errno = 0;
                 WARN("directory %s does not exist", path);
             } else {
-                PANIC("could not remove directory %s: %s", path, strerror(errno));
+                PANIC("could not remove directory %s: %s", path, nobuild__strerror(errno));
             }
         }
     } else {
@@ -1454,7 +1465,7 @@ void path_rm(Cstr path)
                 errno = 0;
                 WARN("file %s does not exist", path);
             } else {
-                PANIC("could not remove file %s: %s", path, strerror(errno));
+                PANIC("could not remove file %s: %s", path, nobuild__strerror(errno));
             }
         }
     }
@@ -1492,12 +1503,12 @@ int is_path1_modified_after_path2(const char *path1, const char *path2)
     struct stat statbuf = {0};
 
     if (stat(path1, &statbuf) < 0) {
-        PANIC("could not stat %s: %s\n", path1, strerror(errno));
+        PANIC("could not stat %s: %s\n", path1, nobuild__strerror(errno));
     }
     time_t path1_time = statbuf.st_mtime;
 
     if (stat(path2, &statbuf) < 0) {
-        PANIC("could not stat %s: %s\n", path2, strerror(errno));
+        PANIC("could not stat %s: %s\n", path2, nobuild__strerror(errno));
     }
     time_t  path2_time = statbuf.st_mtime;
 
