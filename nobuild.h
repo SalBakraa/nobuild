@@ -331,10 +331,24 @@ void path_rm(Cstr path);
 #endif
 
 void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args);
-void INFO(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-void WARN(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-void ERRO(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-void PANIC(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+
+void info(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define INFO(fmt, ...) info("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void warn(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define WARN(fmt, ...) warn("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void erro(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define ERRO(fmt, ...) erro("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void panic(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define PANIC(fmt, ...) panic("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void todo(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define TODO(fmt, ...) todo("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void todo_safe(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define TODO_SAFE(fmt, ...) todo_safe("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 char *shift_args(int *argc, char ***argv);
 
@@ -1262,7 +1276,7 @@ void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args)
     fprintf(stream, "\n");
 }
 
-void INFO(Cstr fmt, ...)
+void info(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -1270,7 +1284,7 @@ void INFO(Cstr fmt, ...)
     va_end(args);
 }
 
-void WARN(Cstr fmt, ...)
+void warn(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -1278,7 +1292,7 @@ void WARN(Cstr fmt, ...)
     va_end(args);
 }
 
-void ERRO(Cstr fmt, ...)
+void erro(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -1286,13 +1300,30 @@ void ERRO(Cstr fmt, ...)
     va_end(args);
 }
 
-void PANIC(Cstr fmt, ...)
+void panic(Cstr fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     VLOG(stderr, "ERRO", fmt, args);
     va_end(args);
     exit(1);
+}
+
+void todo(Cstr fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    VLOG(stderr, "TODO", fmt, args);
+    va_end(args);
+    exit(1);
+}
+
+void todo_safe(Cstr fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    VLOG(stderr, "TODO", fmt, args);
+    va_end(args);
 }
 
 char *shift_args(int *argc, char ***argv)
