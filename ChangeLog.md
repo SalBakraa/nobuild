@@ -1,10 +1,26 @@
 # Changelog
 
+## [0.3.5] - 2023-04-18
+
+### Changed
+
+- Deprecated `IN` macro, use `CHAIN_IN` instead.
+- Deprecated `OUT` macro, use `CHAIN_OUT` instead.
+
+### Added
+
+- Included "direct.h" on windows.
+
+### Fixed
+
+- Fixed various conversion warnings.
+- Fixed calls to undefined functons on windows.
+
 ## [0.3.4] - 2023-04-15
 
 ### Changed
 
-- Deprecated `cst_no_ext`, user `path_no_ext` instead.
+- Deprecated `cst_no_ext` function, use `path_no_ext` instead.
 - Prevent `is_path_1_modified_after_path2` from causing a crash if either path didn't exist.
 
 ### Added
