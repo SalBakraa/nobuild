@@ -1,6 +1,12 @@
 #ifndef NOBUILD_H_
 #define NOBUILD_H_
 
+#ifdef __GNUC__
+#	define NOBUILD_DEPRECATED(func) func __attribute__ ((deprecated))
+#else
+#	define NOBUILD_DEPRECATED(func) func
+#endif
+
 #ifndef _WIN32
 #    define _POSIX_C_SOURCE 200809L
 #    include <sys/types.h>
@@ -101,8 +107,7 @@ int cstr_ends_with(Cstr cstr, Cstr postfix);
 int cstr_starts_with(Cstr cstr, Cstr prefix);
 #define STARTS_WITH(cstr, prefix) cstr_starts_with(cstr, prefix)
 
-Cstr cstr_no_ext(Cstr path);
-#define NOEXT(path) cstr_no_ext(path)
+NOBUILD_DEPRECATED(Cstr cstr_no_ext(Cstr path));
 
 typedef struct {
     Cstr *elems;
@@ -273,8 +278,23 @@ void chain_echo(Chain chain);
 
 void rebuild_urself(const char *binary_path, const char *source_path);
 
+Cstr path_no_ext(Cstr path);
+#define NOEXT(path) path_no_ext(path)
+
+int is_path1_modified_after_path2(Cstr path1, Cstr path2);
+#define IS_NEWER(path1, path2) is_path1_modified_after_path2(path1, path2)
+
+Cstr path_dirname(Cstr path);
+#define DIRNAME(path) path_dirname(path)
+
+Cstr path_basename(Cstr path);
+#define BASENAME(path) path_basename(path)
+
 int path_is_dir(Cstr path);
 #define IS_DIR(path) path_is_dir(path)
+
+int path_is_file(Cstr path);
+#define IS_FILE(path) path_is_file(path)
 
 int path_exists(Cstr path);
 #define PATH_EXISTS(path) path_exists(path)
@@ -293,6 +313,13 @@ void path_rename(Cstr old_path, Cstr new_path);
         INFO("RENAME: %s -> %s", old_path, new_path); \
         path_rename(old_path, new_path);              \
     } while (0)
+
+void path_copy(Cstr old_path, Cstr new_path);
+#define COPY(old_path, new_path)                    \
+    do {                                            \
+        INFO("COPY: %s -> %s", old_path, new_path); \
+        path_copy(old_path, new_path);              \
+    } while(0)
 
 void path_rm(Cstr path);
 #define RM(path)                                \
@@ -543,20 +570,8 @@ int cstr_starts_with(Cstr cstr, Cstr prefix)
 
 Cstr cstr_no_ext(Cstr path)
 {
-    size_t n = strlen(path);
-    while (n > 0 && path[n - 1] != '.') {
-        n -= 1;
-    }
-
-    if (n > 0) {
-        char *result = malloc(n);
-        memcpy(result, path, n);
-        result[n - 1] = '\0';
-
-        return result;
-    } else {
-        return path;
-    }
+    WARN("This function is deprecated. Use `path_no_ext` instead");
+    return path_no_ext(path);
 }
 
 Cstr_Array cstr_array_make(Cstr first, ...)
@@ -1104,6 +1119,100 @@ void chain_echo(Chain chain)
     printf("\n");
 }
 
+Cstr path_no_ext(Cstr path)
+{
+    size_t n = strlen(path);
+    while (n > 0 && path[n - 1] != '.') {
+        n -= 1;
+    }
+
+    if (n > 0) {
+        char *result = malloc(n);
+        memcpy(result, path, n);
+        result[n - 1] = '\0';
+
+        return result;
+    } else {
+        return path;
+    }
+}
+
+Cstr path_dirname(Cstr path)
+{
+    char path_sep = *PATH_SEP;
+    size_t prefix_len = 0;
+
+    // Get length of directory prefix
+    for (size_t i = 1; i < strlen(path); ++i) {
+        if (path[i] != path_sep && path[i-1] == path_sep) {
+            prefix_len = i;
+        }
+    }
+
+    if (prefix_len == 0) {
+        return *path == path_sep ? PATH_SEP : ".";
+    }
+
+    // Strip trailing slashes
+    while (prefix_len > 1 && path[prefix_len-1] == path_sep) {
+        --prefix_len;
+    }
+
+    // copy prefix
+    size_t len = prefix_len+1;
+    char* dirname = malloc(len);
+    if (dirname == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    return dirname[len] = '\0', memcpy(dirname, path, len-1);
+}
+
+Cstr path_basename(Cstr path)
+{
+    char path_sep = *PATH_SEP;
+    Cstr last_sep = strrchr(path, path_sep);
+    if (last_sep == NULL) {
+        return path;
+    }
+
+    // Last character is not a separator
+    if (*(last_sep + 1) != '\0') {
+        size_t len = strlen(last_sep + 1);
+        char* basename = malloc(len + 1);
+        if (basename == NULL) {
+            PANIC("Could not allocate memory: %s", strerror(errno));
+        }
+
+        basename = strcpy(basename, last_sep+1);
+        return basename;
+    }
+
+    // Skip consecutive seprators
+    while (last_sep > path && *(last_sep - 1) == path_sep) {
+        --last_sep;
+    }
+
+    if (last_sep == path) {
+        return PATH_SEP;
+    }
+
+    // Find the start of the basename
+    Cstr start = last_sep;
+    while (start > path && *(start - 1) != path_sep) {
+        --start;
+    }
+    assert(last_sep >= start && "last_sep must never be less than start");
+
+    size_t len = (size_t)(last_sep - start);
+    char *basename = malloc(len + 1);
+    if (basename == NULL) {
+        PANIC("Could not allocate memory: %s", strerror(errno));
+    }
+
+    return basename[len] = '\0', memcpy(basename, start, len);
+}
+
 int path_exists(Cstr path)
 {
 #ifdef _WIN32
@@ -1145,6 +1254,28 @@ int path_is_dir(Cstr path)
     }
 
     return S_ISDIR(statbuf.st_mode);
+#endif // _WIN32
+}
+
+int path_is_file(Cstr path)
+{
+#ifndef _WIN32
+    struct stat statbuf = {0};
+    if (stat(path, &statbuf) < 0) {
+        if (errno == ENOENT) {
+            errno = 0;
+            return 0;
+        }
+
+        PANIC("Could not retrieve information about file %s: %s",
+              path, strerror(errno));
+    }
+
+    return S_ISREG(statbuf.st_mode);
+#else
+    DWORD dwAttrib = GetFileAttributes(path);
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+            !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #endif // _WIN32
 }
 
@@ -1204,6 +1335,62 @@ void path_mkdirs(Cstr_Array path)
     }
 }
 
+void path_copy(Cstr old_path, Cstr new_path) {
+    if (IS_DIR(old_path)) {
+        path_mkdirs(cstr_array_make(new_path, NULL));
+        FOREACH_FILE_IN_DIR(file, old_path, {
+            if (strcmp(file, ".") == 0 || strcmp(file, "..") == 0) {
+                continue;
+            }
+
+            path_copy(PATH(old_path, file), PATH(new_path, file));
+        });
+    } else {
+        Fd f1 = fd_open_for_read(old_path);
+        Fd f2 = fd_open_for_write(new_path);
+
+        unsigned char buffer[4096];
+        while (1) {
+#ifndef _WIN32
+            ssize_t bytes = read(f1, buffer, sizeof buffer);
+            if (bytes == -1) {
+                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, strerror(errno));
+                break;
+            }
+
+            if (bytes == 0) {
+                break;
+            }
+
+            bytes = write(f2, buffer, (size_t)bytes);
+            if (bytes == -1) {
+                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, strerror(errno));
+                break;
+            }
+
+            if (bytes == 0) {
+                break;
+            }
+#else
+            DWORD bytes;
+            if (!ReadFile(f1, buffer, sizeof buffer, &bytes, NULL)) {
+                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, GetLastErrorAsString());
+                break;
+
+            }
+
+            if (!WriteFile(f2, buffer, bytes, &bytes, NULL)) {
+                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, GetLastErrorAsString());
+                break;
+            }
+#endif
+        }
+
+        fd_close(f1);
+        fd_close(f2);
+    }
+}
+
 void path_rm(Cstr path)
 {
     if (IS_DIR(path)) {
@@ -1236,6 +1423,16 @@ void path_rm(Cstr path)
 
 int is_path1_modified_after_path2(const char *path1, const char *path2)
 {
+    // Warn the user that the path is missing
+    if (!PATH_EXISTS(path1)) {
+        WARN("file %s does not exist", path2);
+        return 0;
+    }
+
+    if (!PATH_EXISTS(path2)) {
+        return 1;
+    }
+
 #ifdef _WIN32
     FILETIME path1_time, path2_time;
 
