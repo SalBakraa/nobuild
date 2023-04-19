@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.7] - 2023-04-19
+
+### Added
+
+- Added `fd_printf` function. It's a printf function that outputs into into the specified `Fd`.
+- Added `file_to_c_array` function and helper macro that embed's a file into a C array of bytes.
+
 ## [0.3.6] - 2023-04-18
 
 ### Fixed
