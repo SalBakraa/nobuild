@@ -84,6 +84,13 @@ LPSTR GetLastErrorAsString(void);
 #include <string.h>
 #include <errno.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
+#    define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format (printf, STRING_INDEX, FIRST_TO_CHECK)))
+#else
+#    define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK)
+#endif
+
 #define FOREACH_ARRAY(type, elem, array, body)  \
     for (size_t elem_##index = 0;                           \
          elem_##index < array.count;                        \
@@ -128,6 +135,8 @@ typedef struct {
 Fd fd_open_for_read(Cstr path);
 Fd fd_open_for_write(Cstr path);
 void fd_close(Fd fd);
+int fd_printf(Fd fd, Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(2, 3);
+
 void pid_wait(Pid pid);
 Cstr cmd_show(Cmd cmd);
 Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout);
@@ -310,13 +319,6 @@ void path_rm(Cstr path);
         closedir(dir);                                  \
     } while(0)
 
-#if defined(__GNUC__) || defined(__clang__)
-// https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
-#define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format (printf, STRING_INDEX, FIRST_TO_CHECK)))
-#else
-#define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK)
-#endif
-
 void VLOG(FILE *stream, Cstr tag, Cstr fmt, va_list args);
 void INFO(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 void WARN(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
@@ -324,6 +326,9 @@ void ERRO(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 void PANIC(Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
 
 char *shift_args(int *argc, char ***argv);
+
+void file_to_c_array(Cstr path, Cstr out_path, Cstr array_type,  Cstr array_name, int null_term);
+#define FILE_TO_C_ARRAY(path, out_path, array_name) file_to_c_array(path, out_path, "unsigned char", array_name, 1)
 
 #endif  // NOBUILD_H_
 
@@ -639,6 +644,34 @@ void fd_close(Fd fd)
 #else
     close(fd);
 #endif // _WIN32
+}
+
+int fd_printf(Fd fd, Cstr fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    int len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len < 0) {
+        return len;
+    }
+
+    va_start(args, fmt);
+    char buffer[len+1];
+    int result = vsnprintf(buffer, (size_t)(len + 1), fmt, args);
+    va_end(args);
+    if (result < 0) {
+        return result;
+    }
+
+    // Write the string to the file descriptor
+#ifndef _WIN32
+    write(fd, buffer, (size_t) result);
+#else
+    WriteFile(fd, buffer, (DWORD) result, NULL, NULL);
+#endif
+
+    return result;
 }
 
 void pid_wait(Pid pid)
@@ -1146,6 +1179,63 @@ char *shift_args(int *argc, char ***argv)
     *argc -= 1;
     *argv += 1;
     return result;
+}
+
+void file_to_c_array(Cstr path, Cstr out_path, Cstr array_type, Cstr array_name, int null_term) {
+    Fd file = fd_open_for_read(path);
+    Fd output_file = fd_open_for_write(out_path);
+    fd_printf(output_file, "%s %s[] = {\n", array_type, array_name);
+
+    unsigned char buffer[4096];
+    unsigned long total_bytes_read = 0;
+    do {
+#ifndef _WIN32
+        ssize_t bytes = read(file, buffer, sizeof(buffer));
+        if (bytes == -1) {
+            ERRO("Could not read file %s: %s", path, strerror(errno));
+            fd_close(file);
+            fd_close(output_file);
+            break;
+        }
+
+        if (bytes == 0) {
+            break;
+        }
+#else
+        DWORD bytes;
+        if (!ReadFile(file, buffer, sizeof buffer, &bytes, NULL)) {
+            ERRO("Could not read file %s: %s", path, GetLastErrorAsString());
+            break;
+        }
+#endif
+        int bytes_read = (int) bytes;
+
+        if (bytes_read == 0) {
+            break;
+        }
+
+        for (int i = 0; i < bytes_read; i+=16) {
+            fd_printf(output_file, "\t");
+            for (int j = i; j < i+16; j++) {
+                if (j >= bytes_read) {
+                    break;
+                }
+                fd_printf(output_file, "0x%02x, ", buffer[j]);
+            }
+            fd_printf(output_file, "\n");
+        }
+        total_bytes_read += (unsigned long) bytes_read;
+    } while (1);
+
+    if (null_term) {
+        fd_printf(output_file, "\t0x00 /* Terminate with null */\n");
+        total_bytes_read++;
+    }
+    fd_printf(output_file, "};\n");
+    fd_printf(output_file, "unsigned long %s_len = %lu;\n", array_name, total_bytes_read);
+
+    fd_close(file);
+    fd_close(output_file);
 }
 
 #endif // NOBUILD_IMPLEMENTATION
