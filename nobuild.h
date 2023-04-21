@@ -153,8 +153,10 @@ typedef struct {
 
 Fd fd_open_for_read(Cstr path);
 Fd fd_open_for_write(Cstr path);
-void fd_close(Fd fd);
+size_t fd_read(Fd fd, void *buf, unsigned long count);
+size_t fd_write(Fd fd, void *buf, unsigned long count);
 int fd_printf(Fd fd, Cstr fmt, ...) NOBUILD_PRINTF_FORMAT(2, 3);
+void fd_close(Fd fd);
 
 void pid_wait(Pid pid);
 Cstr cmd_show(Cmd cmd);
@@ -853,13 +855,42 @@ Fd fd_open_for_write(Cstr path)
 #endif // _WIN32
 }
 
-void fd_close(Fd fd)
+size_t fd_read(Fd fd, void *buf, unsigned long count)
 {
-#ifdef _WIN32
-    CloseHandle(fd);
+#ifndef _WIN32
+    ssize_t bytes = read(fd, buf, count);
+    if (bytes == -1) {
+        ERRO("Read error: %s", strerror(errno));
+        return 0;
+    }
 #else
-    close(fd);
-#endif // _WIN32
+    DWORD bytes;
+    if (!ReadFile(fd, buf, count, &bytes, NULL)) {
+        ERRO("Read error: %s", GetLastErrorAsString());
+        return 0;
+    }
+#endif
+
+    return (size_t) bytes;
+}
+
+size_t fd_write(Fd fd, void *buf, unsigned long count)
+{
+#ifndef _WIN32
+    ssize_t bytes = read(fd, buf, (size_t) count);
+    if (bytes == -1) {
+        ERRO("Write error: %s", strerror(errno));
+        return 0;
+    }
+#else
+    DWORD bytes;
+    if (!WriteFile(fd, buf, count, &bytes, NULL)) {
+        ERRO("Write error: %s", GetLastErrorAsString());
+        return 0;
+    }
+#endif
+
+    return (size_t) bytes;
 }
 
 int fd_printf(Fd fd, Cstr fmt, ...) {
@@ -880,14 +911,18 @@ int fd_printf(Fd fd, Cstr fmt, ...) {
         return result;
     }
 
-    // Write the string to the file descriptor
-#ifndef _WIN32
-    write(fd, buffer, (size_t) result);
-#else
-    WriteFile(fd, buffer, (DWORD) result, NULL, NULL);
-#endif
+    fd_write(fd, buffer, (unsigned long) result);
 
     return result;
+}
+
+void fd_close(Fd fd)
+{
+#ifdef _WIN32
+    CloseHandle(fd);
+#else
+    close(fd);
+#endif // _WIN32
 }
 
 void pid_wait(Pid pid)
@@ -1434,39 +1469,15 @@ void path_copy(Cstr old_path, Cstr new_path) {
 
         unsigned char buffer[4096];
         while (1) {
-#ifndef _WIN32
-            ssize_t bytes = read(f1, buffer, sizeof buffer);
-            if (bytes == -1) {
-                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, nobuild__strerror(errno));
-                break;
-            }
-
+            size_t bytes = fd_read(f1, buffer, sizeof buffer);
             if (bytes == 0) {
                 break;
             }
 
-            bytes = write(f2, buffer, (size_t)bytes);
-            if (bytes == -1) {
-                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, nobuild__strerror(errno));
-                break;
-            }
-
+            bytes = fd_write(f2, buffer, (unsigned long) bytes);
             if (bytes == 0) {
                 break;
             }
-#else
-            DWORD bytes;
-            if (!ReadFile(f1, buffer, sizeof buffer, &bytes, NULL)) {
-                ERRO("Could not copy %s to %s due to read error: %s", old_path, new_path, GetLastErrorAsString());
-                break;
-
-            }
-
-            if (!WriteFile(f2, buffer, bytes, &bytes, NULL)) {
-                ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, GetLastErrorAsString());
-                break;
-            }
-#endif
         }
 
         fd_close(f1);
