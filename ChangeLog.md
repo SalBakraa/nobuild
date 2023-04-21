@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.8] - 2023-04-21
+
+### Added
+
+- Added `fd_write` function. This allows you to write bytes from a buffer into a specified `Fd`.
+- Added `fd_read` function. This allows you to read bytes into a buffer from a specified `Fd`.
+
 ## [0.3.7] - 2023-04-19
 
 ### Added
