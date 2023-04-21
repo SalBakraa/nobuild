@@ -127,7 +127,10 @@ typedef struct {
 
 Fd fd_open_for_read(Cstr path);
 Fd fd_open_for_write(Cstr path);
+size_t fd_read(Fd fd, void *buf, unsigned long count);
+size_t fd_write(Fd fd, void *buf, unsigned long count);
 void fd_close(Fd fd);
+
 void pid_wait(Pid pid);
 Cstr cmd_show(Cmd cmd);
 Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout);
@@ -630,6 +633,44 @@ Fd fd_open_for_write(Cstr path)
 
     return result;
 #endif // _WIN32
+}
+
+size_t fd_read(Fd fd, void *buf, unsigned long count)
+{
+#ifndef _WIN32
+    ssize_t bytes = read(fd, buf, count);
+    if (bytes == -1) {
+        ERRO("Read error: %s", strerror(errno));
+        return 0;
+    }
+#else
+    DWORD bytes;
+    if (!ReadFile(fd, buf, count, &bytes, NULL)) {
+        ERRO("Read error: %s", GetLastErrorAsString());
+        return 0;
+    }
+#endif
+
+    return (size_t) bytes;
+}
+
+size_t fd_write(Fd fd, void *buf, unsigned long count)
+{
+#ifndef _WIN32
+    ssize_t bytes = read(fd, buf, (size_t) count);
+    if (bytes == -1) {
+        ERRO("Write error: %s", strerror(errno));
+        return 0;
+    }
+#else
+    DWORD bytes;
+    if (!WriteFile(fd, buf, count, &bytes, NULL)) {
+        ERRO("Write error: %s", GetLastErrorAsString());
+        return 0;
+    }
+#endif
+
+    return (size_t) bytes;
 }
 
 void fd_close(Fd fd)
