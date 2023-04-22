@@ -1009,7 +1009,7 @@ int nobuild__mkdir(const char *pathname, unsigned int mode)
 #ifndef _WIN32
     return mkdir(pathname, mode);
 #else
-    #pragma unused(mode)
+    _Pragma("unused(mode)");
     return _mkdir(pathname);
 #endif
 }
