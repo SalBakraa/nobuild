@@ -903,8 +903,14 @@ int fd_printf(Fd fd, Cstr fmt, ...) {
         return len;
     }
 
+    // MSVC does not support variable length arrays
+#ifndef _WIN32
+     char buffer[len+1];
+#else
+     char *buffer = malloc(sizeof *buffer * (len+1));
+#endif
+
     va_start(args, fmt);
-    char buffer[len+1];
     int result = vsnprintf(buffer, (size_t)(len + 1), fmt, args);
     va_end(args);
     if (result < 0) {
@@ -912,6 +918,10 @@ int fd_printf(Fd fd, Cstr fmt, ...) {
     }
 
     fd_write(fd, buffer, (unsigned long) result);
+
+#ifdef _WIN32
+    free(buffer);
+#endif
 
     return result;
 }
