@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.10] - 2023-05-9
+
+### Fixed
+
+- Fixed `realloc: invalid pointer` error when nobuild rebuilds itself
+
 ## [0.3.9] - 2023-04-21
 
 ### Fixed
