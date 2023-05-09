@@ -128,7 +128,7 @@ Cstr_Array cstr_array_make(Cstr first, ...);
 
 Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr);
 
-Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
+Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
@@ -540,15 +540,16 @@ Cstr_Array cstr_array_append(Cstr_Array cstrs, Cstr cstr)
 }
 
 
-Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
+Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
 {
     if (cstrs.count == 0) {
-        return NULL;
+        return cstrs;
     }
 
     if (cstr == NULL) {
+        cstrs.elems[--cstrs.count];
         cstrs.capacity++;
-        return cstrs.elems[--cstrs.count];
+        return cstrs;
     }
 
     // Find the index of the element to be removed
@@ -560,19 +561,18 @@ Cstr cstr_array_remove(Cstr_Array cstrs, Cstr cstr)
         }
 
         // Shift elements left if found the cstr
-        Cstr ret = cstrs.elems[i];
         for (size_t j = i; j < cstrs.count - 1; j++) {
             cstrs.elems[j] = cstrs.elems[j + 1];
         }
         cstrs.count--;
         cstrs.capacity++;
 
-       // TODO: Might want to realloc array if capacity is too high
-        return ret;
+        // TODO: Might want to realloc array if capacity is too high
+        return cstrs;
     }
 
     // The string was not found
-    return NULL;
+    return cstrs;
 }
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
