@@ -1041,7 +1041,12 @@ Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
     }
 
     if (cpid == 0) {
-        Cstr_Array args = cstr_array_append(cmd.line, NULL);
+        Cstr_Array args = {
+            .count = cmd.line.count
+        };
+        args.elems = malloc(sizeof(Cstr) * args.count+1);
+        memcpy(args.elems, cmd.line.elems, args.count * sizeof(Cstr));
+        args.elems[args.count++] = NULL;
 
         if (fdin) {
             if (dup2(*fdin, STDIN_FILENO) < 0) {
