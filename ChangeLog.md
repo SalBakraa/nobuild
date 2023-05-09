@@ -1,10 +1,30 @@
 # Changelog
 
+## [0.4.0] - 2023-05-11
+
+### Removed
+
+- **BREAKING**: Removed `cstr_no_ext` function.
+- **BREAKING**: Removed then `IN` and `OUT` macros.
+
+### Changed
+
+- **BREAKING**:  `cst_array_remove` returns `Cstr_Array` instead of `Cstr`.
+- Deprecated `VLOG` function.
+
+### Fixed
+
+- Fixed `cstr_array_remove` not correctly returning the modified `Cstr_Array`.
+
+### Added
+
+- Generated standalone versions for each nobuild library.
+
 ## [0.3.10] - 2023-05-9
 
 ### Fixed
 
-- Fixed `realloc: invalid pointer` error when nobuild rebuilds itself
+- Fixed `realloc: invalid pointer` error when nobuild rebuilds itself.
 
 ## [0.3.9] - 2023-04-21
 
