@@ -115,8 +115,6 @@ int cstr_ends_with(Cstr cstr, Cstr postfix);
 int cstr_starts_with(Cstr cstr, Cstr prefix);
 #define STARTS_WITH(cstr, prefix) cstr_starts_with(cstr, prefix)
 
-NOBUILD_DEPRECATED(Cstr cstr_no_ext(Cstr path));
-
 typedef struct {
     Cstr *elems;
     size_t count;
@@ -191,27 +189,6 @@ typedef struct {
     Chain_Token_Type type;
     Cstr_Array args;
 } Chain_Token;
-
-#ifndef _WIN32
-Chain_Token_Type __attribute__((deprecated)) IN_is_deprecated_use_CHAIN_IN_instead(Chain_Token_Type t) { return t; }
-Chain_Token_Type __attribute__((deprecated)) OLD_is_deprecated_use_CHAIN_OLD_instead(Chain_Token_Type t) { return t; }
-#else
-Chain_Token_Type __declspec(deprecated("IN is already defined by WinAPI, use `CHAIN_IN` instead.")) IN_is_deprecated_use_CHAIN_IN_instead(Chain_Token_Type t) { return t; }
-Chain_Token_Type __declspec(deprecated("OUT is already defined by WinAPI, use `CHAIN_OUT` instead.")) OLD_is_deprecated_use_CHAIN_OLD_instead(Chain_Token_Type t) { return t; }
-#endif
-
-// TODO(#17): IN and OUT are already taken by WinAPI
-#define IN(path) \
-    (Chain_Token) { \
-        .type = IN_is_deprecated_use_CHAIN_IN_instead(CHAIN_TOKEN_IN), \
-        .args = cstr_array_make(path, NULL) \
-    }
-
-#define OUT(path) \
-    (Chain_Token) { \
-        .type = OLD_is_deprecated_use_CHAIN_OLD_instead(CHAIN_TOKEN_OUT), \
-        .args = cstr_array_make(path, NULL) \
-    }
 
 #define CHAIN_IN(path)                      \
     (Chain_Token) {                         \
@@ -604,12 +581,6 @@ int cstr_starts_with(Cstr cstr, Cstr prefix)
     const size_t cstr_len = strlen(cstr);
     const size_t prefix_len = strlen(prefix);
     return prefix_len <= cstr_len && strncmp(cstr, prefix, prefix_len) == 0;
-}
-
-Cstr cstr_no_ext(Cstr path)
-{
-    WARN("This function is deprecated. Use `path_no_ext` instead");
-    return path_no_ext(path);
 }
 
 Cstr_Array cstr_array_make(Cstr first, ...)
