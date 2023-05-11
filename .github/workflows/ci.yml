@@ -6,6 +6,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
       - name: build
         run: |
           $CC nobuild.c -o nobuild
@@ -17,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
       - name: build
         run: |
           $CC nobuild.c -o nobuild
@@ -28,6 +34,9 @@ jobs:
     runs-on: macOS-latest
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
       - name: build
         run: |
           $CC nobuild.c -o nobuild
@@ -39,6 +48,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
         # this runs vcvarsall for us, so we get the MSVC toolchain in PATH.
       - uses: seanmiddleditch/gha-setup-vsdevenv@master
       - name: build
