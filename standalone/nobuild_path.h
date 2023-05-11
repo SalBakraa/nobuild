@@ -1,49 +1,11 @@
-#ifndef NOBUILD_H_
-#define NOBUILD_H_
+#ifndef NOBUILD_PATH_H_
+#define NOBUILD_PATH_H_
 
-
-#include <stdio.h>
-#include <stdarg.h>
-
-#ifndef NOBUILD_PRINTF_FORMAT
-#	if defined(__GNUC__) || defined(__clang__)
-#		// https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
-#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format (printf, STRING_INDEX, FIRST_TO_CHECK)))
-#	else
-#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK)
-#	endif
+#ifndef _WIN32
+#	define PATH_SEP "/"
+#else
+#	define PATH_SEP "\\"
 #endif
-
-#ifndef NOBUILD__DEPRECATED
-#	if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
-#		define NOBUILD__DEPRECATED(func) __attribute__ ((deprecated)) func
-#	elif defined(_MSC_VER)
-#		define NOBUILD__DEPRECATED(func) __declspec (deprecated) func
-#	endif
-#endif
-
-NOBUILD__DEPRECATED(void VLOG(FILE *stream, const char *tag, const char *fmt, va_list args));
-
-void info(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-#define INFO(fmt, ...) info("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-
-void warn(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-#define WARN(fmt, ...) warn("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-
-void erro(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-#define ERRO(fmt, ...) erro("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-
-void panic(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-#define PANIC(fmt, ...) panic("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-
-void todo(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-#define TODO(fmt, ...) todo("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-
-void todo_safe(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
-#define TODO_SAFE(fmt, ...) todo_safe("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
-
-
-////////////////////////////////////////////////////////////////////////////////
 
 
 #include <stddef.h>
@@ -85,149 +47,6 @@ Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim);
 Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs);
 #define JOIN(sep, ...) cstr_array_join(sep, cstr_array_make(__VA_ARGS__, NULL))
 #define CONCAT(...) JOIN("", __VA_ARGS__)
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-#ifndef _WIN32
-#    include <sys/types.h>
-typedef pid_t Pid;
-typedef int Fd;
-#else
-#    define WIN32_MEAN_AND_LEAN
-#    include <windows.h>
-typedef HANDLE Pid;
-typedef HANDLE Fd;
-#endif
-
-#ifndef NOBUILD_PRINTF_FORMAT
-#	if defined(__GNUC__) || defined(__clang__)
-#		// https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
-#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format (printf, STRING_INDEX, FIRST_TO_CHECK)))
-#	else
-#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK)
-#	endif
-#endif
-
-typedef struct {
-    Fd read;
-    Fd write;
-} Pipe;
-
-Pipe pipe_make(void);
-
-Fd fd_open_for_read(const char *path);
-Fd fd_open_for_write(const char *path);
-size_t fd_read(Fd fd, void *buf, unsigned long count);
-size_t fd_write(Fd fd, void *buf, unsigned long count);
-int fd_printf(Fd fd, const char *fmt, ...) NOBUILD_PRINTF_FORMAT(2, 3);
-void fd_close(Fd fd);
-
-void pid_wait(Pid pid);
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-#ifndef _WIN32
-#	include <sys/types.h>
-typedef pid_t Pid;
-typedef int Fd;
-#else
-#	define WIN32_MEAN_AND_LEAN
-#	include <windows.h>
-typedef HANDLE Pid;
-typedef HANDLE Fd;
-#endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-typedef struct {
-    Cstr_Array line;
-} Cmd;
-
-Cstr cmd_show(Cmd cmd);
-Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout);
-void cmd_run_sync(Cmd cmd);
-
-// TODO(#1): no way to disable echo in nobuild scripts
-// TODO(#2): no way to ignore fails
-#define CMD(...)                                        \
-    do {                                                \
-        Cmd cmd = {                                     \
-            .line = cstr_array_make(__VA_ARGS__, NULL)  \
-        };                                              \
-        INFO("CMD: %s", cmd_show(cmd));                 \
-        cmd_run_sync(cmd);                              \
-    } while (0)
-
-typedef struct {
-    Cmd *elems;
-    size_t count;
-} Cmd_Array;
-
-typedef enum {
-    CHAIN_TOKEN_END = 0,
-    CHAIN_TOKEN_IN,
-    CHAIN_TOKEN_OUT,
-    CHAIN_TOKEN_CMD
-} Chain_Token_Type;
-
-// A single token for the CHAIN(...) DSL syntax
-typedef struct {
-    Chain_Token_Type type;
-    Cstr_Array args;
-} Chain_Token;
-
-#define CHAIN_IN(path)                      \
-    (Chain_Token) {                         \
-        .type = CHAIN_TOKEN_IN,             \
-        .args = cstr_array_make(path, NULL) \
-    }
-
-#define CHAIN_OUT(path)                     \
-    (Chain_Token) {                         \
-        .type = CHAIN_TOKEN_OUT,            \
-        .args = cstr_array_make(path, NULL) \
-    }
-
-#define CHAIN_CMD(...)                             \
-    (Chain_Token) {                                \
-        .type = CHAIN_TOKEN_CMD,                   \
-        .args = cstr_array_make(__VA_ARGS__, NULL) \
-    }
-
-// TODO(#20): pipes do not allow redirecting stderr
-typedef struct {
-    Cstr input_filepath;
-    Cmd_Array cmds;
-    Cstr output_filepath;
-} Chain;
-
-Chain chain_build_from_tokens(Chain_Token first, ...);
-void chain_run_sync(Chain chain);
-void chain_echo(Chain chain);
-
-// TODO(#15): PIPE does not report where exactly a syntactic error has happened
-#define CHAIN(...)                                                             \
-    do {                                                                       \
-        Chain chain = chain_build_from_tokens(__VA_ARGS__, (Chain_Token) {0}); \
-        chain_echo(chain);                                                     \
-        chain_run_sync(chain);                                                 \
-    } while(0)
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-#ifndef _WIN32
-#	define PATH_SEP "/"
-#else
-#	define PATH_SEP "\\"
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,84 +126,60 @@ void path_rm(Cstr path);
         closedir(dir);                                  \
     } while(0)
 
+#endif // NOBUILD_PATH_H_
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef NOBUILD_PATH_IMPLEMENTATION
+#ifndef NOBUILD_PATH_I_
+#define NOBUILD_PATH_I_
 
-#define FOREACH_ARRAY(type, elem, array, body)                                  \
-    for (size_t elem_##index = 0; elem_##index < array.count; ++elem_##index) { \
-        type *elem = &array.elems[elem_##index];                                \
-        body;                                                                   \
-    }
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
-#ifndef REBUILD_URSELF
-#	if _WIN32
-#		if defined(__GNUC__)
-#			define REBUILD_URSELF(binary_path, source_path) CMD("gcc", "-o", binary_path, source_path)
-#		elif defined(__clang__)
-#			define REBUILD_URSELF(binary_path, source_path) CMD("clang", "-o", binary_path, source_path)
-#		elif defined(_MSC_VER)
-#			define REBUILD_URSELF(binary_path, source_path) CMD("cl.exe", source_path)
-#		endif
+
+#include <stdio.h>
+#include <stdarg.h>
+
+#ifndef NOBUILD_PRINTF_FORMAT
+#	if defined(__GNUC__) || defined(__clang__)
+#		// https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
+#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format (printf, STRING_INDEX, FIRST_TO_CHECK)))
 #	else
-#		define REBUILD_URSELF(binary_path, source_path) CMD("cc", "-o", binary_path, source_path)
+#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK)
 #	endif
 #endif
 
-// Go Rebuild Urself™ Technology
-//
-//   How to use it:
-//     int main(int argc, char** argv) {
-//         GO_REBUILD_URSELF(argc, argv);
-//         // actual work
-//         return 0;
-//     }
-//
-//   After your added this macro every time you run ./nobuild it will detect
-//   that you modified its original source code and will try to rebuild itself
-//   before doing any actual work. So you only need to bootstrap your build system
-//   once.
-//
-//   The modification is detected by comparing the last modified times of the executable
-//   and its source code. The same way the make utility usually does it.
-//
-//   The rebuilding is done by using the REBUILD_URSELF macro which you can redefine
-//   if you need a special way of bootstraping your build system. (which I personally
-//   do not recommend since the whole idea of nobuild is to keep the process of bootstrapping
-//   as simple as possible and doing all of the actual work inside of the nobuild)
-//
-#define GO_REBUILD_URSELF(argc, argv)                                  \
-    do {                                                               \
-        const char *source_path = __FILE__;                            \
-        assert(argc >= 1);                                             \
-        const char *binary_path = argv[0];                             \
-                                                                       \
-        if (is_path1_modified_after_path2(source_path, binary_path)) { \
-            RENAME(binary_path, CONCAT(binary_path, ".old"));          \
-            REBUILD_URSELF(binary_path, source_path);                  \
-            Cmd cmd = {                                                \
-                .line = {                                              \
-                    .elems = (Cstr*) argv,                             \
-                    .count = argc,                                     \
-                },                                                     \
-            };                                                         \
-            INFO("CMD: %s", cmd_show(cmd));                            \
-            cmd_run_sync(cmd);                                         \
-            exit(0);                                                   \
-        }                                                              \
-    } while(0)
+#ifndef NOBUILD__DEPRECATED
+#	if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
+#		define NOBUILD__DEPRECATED(func) __attribute__ ((deprecated)) func
+#	elif defined(_MSC_VER)
+#		define NOBUILD__DEPRECATED(func) __declspec (deprecated) func
+#	endif
+#endif
 
-char *shift_args(int *argc, char ***argv);
+NOBUILD__DEPRECATED(void VLOG(FILE *stream, const char *tag, const char *fmt, va_list args));
 
-void file_to_c_array(Cstr path, Cstr out_path, Cstr array_type,  Cstr array_name, int null_term);
-#define FILE_TO_C_ARRAY(path, out_path, array_name) file_to_c_array(path, out_path, "unsigned char", array_name, 1)
+void info(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define INFO(fmt, ...) info("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
-#endif  // NOBUILD_H_
+void warn(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define WARN(fmt, ...) warn("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
-////////////////////////////////////////////////////////////////////////////////
+void erro(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define ERRO(fmt, ...) erro("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
-#define NOBUILD_IMPLEMENTATION
-#ifdef NOBUILD_IMPLEMENTATION
+void panic(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define PANIC(fmt, ...) panic("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void todo(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define TODO(fmt, ...) todo("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+void todo_safe(const char *fmt, ...) NOBUILD_PRINTF_FORMAT(1, 2);
+#define TODO_SAFE(fmt, ...) todo_safe("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -719,6 +514,43 @@ Cstr cstr_array_join(Cstr sep, Cstr_Array cstrs)
 
 
 
+#ifndef _WIN32
+#    include <sys/types.h>
+typedef pid_t Pid;
+typedef int Fd;
+#else
+#    define WIN32_MEAN_AND_LEAN
+#    include <windows.h>
+typedef HANDLE Pid;
+typedef HANDLE Fd;
+#endif
+
+#ifndef NOBUILD_PRINTF_FORMAT
+#	if defined(__GNUC__) || defined(__clang__)
+#		// https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Function-Attributes.html
+#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format (printf, STRING_INDEX, FIRST_TO_CHECK)))
+#	else
+#		define NOBUILD_PRINTF_FORMAT(STRING_INDEX, FIRST_TO_CHECK)
+#	endif
+#endif
+
+typedef struct {
+    Fd read;
+    Fd write;
+} Pipe;
+
+Pipe pipe_make(void);
+
+Fd fd_open_for_read(const char *path);
+Fd fd_open_for_write(const char *path);
+size_t fd_read(Fd fd, void *buf, unsigned long count);
+size_t fd_write(Fd fd, void *buf, unsigned long count);
+int fd_printf(Fd fd, const char *fmt, ...) NOBUILD_PRINTF_FORMAT(2, 3);
+void fd_close(Fd fd);
+
+void pid_wait(Pid pid);
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -973,337 +805,6 @@ void pid_wait(Pid pid)
     CloseHandle(pid);
 #endif // _WIN32
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <errno.h>
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-// Multiple modules could define this function, so add a guard around it to prevent redefinition
-#ifndef NOBUILD__STRERROR
-#define NOBUILD__STRERROR
-Cstr nobuild__strerror(int errnum)
-{
-#ifndef _WIN32
-    return nobuild__strerror(errnum);
-#else
-    static char buffer[1024];
-    strerror_s(buffer, 1024, errnum);
-    return buffer;
-#endif
-}
-#endif // NOBUILD__STRERROR
-
-// Multiple modules could define this function, so add a guard around it to prevent redefinition
-#if defined(_WIN32) && !defined(NOBUILD__GETLASTERROR)
-#define NOBUILD__GETLASTERROR
-LPSTR nobuild__GetLastErrorAsString(void)
-{
-    // https://stackoverflow.com/q/1387064/21582981
-    DWORD errorMessageId = GetLastError();
-    assert(errorMessageId != 0);
-
-    LPSTR messageBuffer = NULL;
-
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, // DWORD   dwFlags,
-        NULL, // LPCVOID lpSource,
-        errorMessageId, // DWORD   dwMessageId,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // DWORD   dwLanguageId,
-        (LPSTR) &messageBuffer, // LPTSTR  lpBuffer,
-        0, // DWORD   nSize,
-        NULL // va_list *Arguments
-    );
-
-    return messageBuffer;
-}
-#endif // NOBUILD__GETLASTERROR
-
-Cstr cmd_show(Cmd cmd)
-{
-    // TODO(#31): cmd_show does not render the command line properly
-    // - No string literals when arguments contains space
-    // - No escaping of special characters
-    // - Etc.
-    return cstr_array_join(" ", cmd.line);
-}
-
-Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
-{
-#ifndef _WIN32
-    pid_t cpid = fork();
-    if (cpid < 0) {
-        PANIC("Could not fork child process: %s: %s",
-              cmd_show(cmd), nobuild__strerror(errno));
-    }
-
-    if (cpid == 0) {
-        Cstr_Array args = {
-            .count = cmd.line.count
-        };
-        args.elems = malloc(sizeof(Cstr) * args.count+1);
-        memcpy(args.elems, cmd.line.elems, args.count * sizeof(Cstr));
-        args.elems[args.count++] = NULL;
-
-        if (fdin) {
-            if (dup2(*fdin, STDIN_FILENO) < 0) {
-                PANIC("Could not setup stdin for child process: %s", nobuild__strerror(errno));
-            }
-        }
-
-        if (fdout) {
-            if (dup2(*fdout, STDOUT_FILENO) < 0) {
-                PANIC("Could not setup stdout for child process: %s", nobuild__strerror(errno));
-            }
-        }
-
-        if (execvp(args.elems[0], (char * const*) args.elems) < 0) {
-            PANIC("Could not exec child process: %s: %s",
-                  cmd_show(cmd), nobuild__strerror(errno));
-        }
-    }
-
-    return cpid;
-#else
-    // https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
-
-    STARTUPINFO siStartInfo;
-    ZeroMemory(&siStartInfo, sizeof(siStartInfo));
-    siStartInfo.cb = sizeof(STARTUPINFO);
-    // NOTE: theoretically setting NULL to std handles should not be a problem
-    // https://docs.microsoft.com/en-us/windows/console/getstdhandle?redirectedfrom=MSDN#attachdetach-behavior
-    siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    // TODO(#32): check for errors in GetStdHandle
-    siStartInfo.hStdOutput = fdout ? *fdout : GetStdHandle(STD_OUTPUT_HANDLE);
-    siStartInfo.hStdInput = fdin ? *fdin : GetStdHandle(STD_INPUT_HANDLE);
-    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-    PROCESS_INFORMATION piProcInfo;
-    ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-
-    BOOL bSuccess =
-        CreateProcess(
-            NULL,
-            // TODO(#33): cmd_run_async on Windows does not render command line properly
-            // It may require wrapping some arguments with double-quotes if they contains spaces, etc.
-            (LPSTR) cstr_array_join(" ", cmd.line),
-            NULL,
-            NULL,
-            TRUE,
-            0,
-            NULL,
-            NULL,
-            &siStartInfo,
-            &piProcInfo
-        );
-
-    if (!bSuccess) {
-        PANIC("Could not create child process %s: %s\n",
-              cmd_show(cmd), nobuild__GetLastErrorAsString());
-    }
-
-    CloseHandle(piProcInfo.hThread);
-
-    return piProcInfo.hProcess;
-#endif // _WIN32
-}
-
-void cmd_run_sync(Cmd cmd)
-{
-    pid_wait(cmd_run_async(cmd, NULL, NULL));
-}
-
-static void chain_set_input_output_files_or_count_cmds(Chain *chain, Chain_Token token)
-{
-    switch (token.type) {
-    case CHAIN_TOKEN_CMD: {
-        chain->cmds.count += 1;
-    }
-    break;
-
-    case CHAIN_TOKEN_IN: {
-        if (chain->input_filepath) {
-            PANIC("Input file path was already set");
-        }
-
-        chain->input_filepath = token.args.elems[0];
-    }
-    break;
-
-    case CHAIN_TOKEN_OUT: {
-        if (chain->output_filepath) {
-            PANIC("Output file path was already set");
-        }
-
-        chain->output_filepath = token.args.elems[0];
-    }
-    break;
-
-    case CHAIN_TOKEN_END:
-    default: {
-        assert(0 && "unreachable");
-        exit(1);
-    }
-    }
-}
-
-static void chain_push_cmd(Chain *chain, Chain_Token token)
-{
-    if (token.type == CHAIN_TOKEN_CMD) {
-        chain->cmds.elems[chain->cmds.count++] = (Cmd) {
-            .line = token.args
-        };
-    }
-}
-
-Chain chain_build_from_tokens(Chain_Token first, ...)
-{
-    Chain result = {0};
-
-    chain_set_input_output_files_or_count_cmds(&result, first);
-    va_list args;
-    va_start(args, first);
-    Chain_Token next = va_arg(args, Chain_Token);
-    while (next.type != CHAIN_TOKEN_END) {
-        chain_set_input_output_files_or_count_cmds(&result, next);
-        next = va_arg(args, Chain_Token);
-    }
-    va_end(args);
-
-    result.cmds.elems = malloc(sizeof(result.cmds.elems[0]) * result.cmds.count);
-    if (result.cmds.elems == NULL) {
-        PANIC("Could not allocate memory: %s", nobuild__strerror(errno));
-    }
-    result.cmds.count = 0;
-
-    chain_push_cmd(&result, first);
-
-    va_start(args, first);
-    next = va_arg(args, Chain_Token);
-    while (next.type != CHAIN_TOKEN_END) {
-        chain_push_cmd(&result, next);
-        next = va_arg(args, Chain_Token);
-    }
-    va_end(args);
-
-    return result;
-}
-
-void chain_run_sync(Chain chain)
-{
-    if (chain.cmds.count == 0) {
-        return;
-    }
-
-    Pid *cpids = malloc(sizeof(Pid) * chain.cmds.count);
-
-    Pipe pip = {0};
-    Fd fdin = 0;
-    Fd *fdprev = NULL;
-
-    if (chain.input_filepath) {
-        fdin = fd_open_for_read(chain.input_filepath);
-        fdprev = &fdin;
-    }
-
-    for (size_t i = 0; i < chain.cmds.count - 1; ++i) {
-        pip = pipe_make();
-
-        cpids[i] = cmd_run_async(
-                       chain.cmds.elems[i],
-                       fdprev,
-                       &pip.write);
-
-        if (fdprev) fd_close(*fdprev);
-        fd_close(pip.write);
-        fdprev = &fdin;
-        fdin = pip.read;
-    }
-
-    {
-        Fd fdout = 0;
-        Fd *fdnext = NULL;
-
-        if (chain.output_filepath) {
-            fdout = fd_open_for_write(chain.output_filepath);
-            fdnext = &fdout;
-        }
-
-        const size_t last = chain.cmds.count - 1;
-        cpids[last] =
-            cmd_run_async(
-                chain.cmds.elems[last],
-                fdprev,
-                fdnext);
-
-        if (fdprev) fd_close(*fdprev);
-        if (fdnext) fd_close(*fdnext);
-    }
-
-    for (size_t i = 0; i < chain.cmds.count; ++i) {
-        pid_wait(cpids[i]);
-    }
-}
-
-void chain_echo(Chain chain)
-{
-    printf("[INFO] CHAIN:");
-    if (chain.input_filepath) {
-        printf(" %s", chain.input_filepath);
-    }
-
-    for (size_t cmd_index = 0; cmd_index < chain.cmds.count; ++cmd_index) {
-        Cmd *cmd = &chain.cmds.elems[cmd_index];
-        printf(" |> %s", cmd_show(*cmd));
-    }
-
-    if (chain.output_filepath) {
-        printf(" |> %s", chain.output_filepath);
-    }
-
-    printf("\n");
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
 
 
 #ifndef _WIN32
@@ -1862,71 +1363,5 @@ void path_rm(Cstr path)
     }
 }
 
-
-char *shift_args(int *argc, char ***argv)
-{
-    assert(*argc > 0);
-    char *result = **argv;
-    *argc -= 1;
-    *argv += 1;
-    return result;
-}
-
-void file_to_c_array(Cstr path, Cstr out_path, Cstr array_type, Cstr array_name, int null_term) {
-    Fd file = fd_open_for_read(path);
-    Fd output_file = fd_open_for_write(out_path);
-    fd_printf(output_file, "%s %s[] = {\n", array_type, array_name);
-
-    unsigned char buffer[4096];
-    unsigned long total_bytes_read = 0;
-    do {
-#ifndef _WIN32
-        ssize_t bytes = read(file, buffer, sizeof(buffer));
-        if (bytes == -1) {
-            ERRO("Could not read file %s: %s", path, strerror(errno));
-            fd_close(file);
-            fd_close(output_file);
-            break;
-        }
-
-        if (bytes == 0) {
-            break;
-        }
-#else
-        DWORD bytes;
-        if (!ReadFile(file, buffer, sizeof buffer, &bytes, NULL)) {
-            ERRO("Could not read file %s: %s", path, GetLastErrorAsString());
-            break;
-        }
-#endif
-        int bytes_read = (int) bytes;
-
-        if (bytes_read == 0) {
-            break;
-        }
-
-        for (int i = 0; i < bytes_read; i+=16) {
-            fd_printf(output_file, "\t");
-            for (int j = i; j < i+16; j++) {
-                if (j >= bytes_read) {
-                    break;
-                }
-                fd_printf(output_file, "0x%02x, ", buffer[j]);
-            }
-            fd_printf(output_file, "\n");
-        }
-        total_bytes_read += (unsigned long) bytes_read;
-    } while (1);
-
-    if (null_term) {
-        fd_printf(output_file, "\t0x00 /* Terminate with null */\n");
-        total_bytes_read++;
-    }
-    fd_printf(output_file, "};\n");
-    fd_printf(output_file, "unsigned long %s_len = %lu;\n", array_name, total_bytes_read);
-
-    fd_close(file);
-    fd_close(output_file);
-}
-
-#endif // NOBUILD_IMPLEMENTATION
+#endif // NOBUILD_PATH_I_
+#endif // NOBUILD_PATH_IMPLEMENTATION
