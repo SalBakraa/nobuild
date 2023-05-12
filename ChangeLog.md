@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.3] - 2023-05-12
+
+### Fixed
+
+- Use `nobuild__GetLastErrorAsString()` everywhere `GetLastErrorAsString()` is used'
+
 ## [0.4.2] - 2023-05-12
 
 ### Fixed
