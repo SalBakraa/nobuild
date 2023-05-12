@@ -55,7 +55,7 @@
         assert(argc >= 1);                                             \
         const char *binary_path = argv[0];                             \
                                                                        \
-        if (is_path1_modified_after_path2(source_path, binary_path)) { \
+        if (IS_NEWER(source_path, binary_path)) { \
             RENAME(binary_path, CONCAT(binary_path, ".old"));          \
             REBUILD_URSELF(binary_path, source_path);                  \
             Cmd cmd = {                                                \
