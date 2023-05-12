@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <ctype.h>
 
 #define NOBUILD_IMPLEMENTATION
@@ -72,7 +71,7 @@ int main(int argc, char **argv)
     }
 
     // Build PCPP
-    char cwd[PATH_MAX];
+    char cwd[4096];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         PANIC("Could not retrieve current working directory.");
     }
