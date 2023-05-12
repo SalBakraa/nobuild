@@ -1,6 +1,14 @@
 #ifndef NOBUILD_PATH_H_
 #define NOBUILD_PATH_H_
 
+#ifndef NOBUILD__DEPRECATED
+#	if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
+#		define NOBUILD__DEPRECATED(func) __attribute__ ((deprecated)) func
+#	elif defined(_MSC_VER)
+#		define NOBUILD__DEPRECATED(func) __declspec (deprecated) func
+#	endif
+#endif
+
 #ifndef _WIN32
 #	define PATH_SEP "/"
 #else
@@ -29,10 +37,9 @@ int path_is_file(Cstr path);
 int path_exists(Cstr path);
 #define PATH_EXISTS(path) path_exists(path)
 
+NOBUILD__DEPRECATED(int is_path1_modified_after_path2(Cstr path1, Cstr path2));
 int path_is_newer(Cstr path1, Cstr path2);
-
-int is_path1_modified_after_path2(Cstr path1, Cstr path2);
-#define IS_NEWER(path1, path2) is_path1_modified_after_path2(path1, path2)
+#define IS_NEWER(path1, path2) path_is_newer(path1, path2)
 
 void path_mkdirs(Cstr_Array path);
 #define MKDIRS(...)                                             \
@@ -350,47 +357,8 @@ int path_exists(Cstr path)
 
 int is_path1_modified_after_path2(Cstr path1, Cstr path2)
 {
-    // Warn the user that the path is missing
-    if (!PATH_EXISTS(path1)) {
-        WARN("File %s does not exist", path2);
-        return 0;
-    }
-
-    if (!PATH_EXISTS(path2)) {
-        return 1;
-    }
-
-#ifndef _WIN32
-    struct stat statbuf = {0};
-
-    if (stat(path1, &statbuf) < 0) {
-        PANIC("Could not stat %s: %s\n", path1, nobuild__strerror(errno));
-    }
-    time_t path1_time = statbuf.st_mtime;
-
-    if (stat(path2, &statbuf) < 0) {
-        PANIC("Could not stat %s: %s\n", path2, nobuild__strerror(errno));
-    }
-    time_t  path2_time = statbuf.st_mtime;
-
-    return path1_time > path2_time;
-#else
-    FILETIME path1_time, path2_time;
-
-    Fd path1_fd = fd_open_for_read(path1);
-    if (!GetFileTime(path1_fd, NULL, NULL, &path1_time)) {
-        PANIC("Could not get time of %s: %s", path1, nobuild__GetLastErrorAsString());
-    }
-    fd_close(path1_fd);
-
-    Fd path2_fd = fd_open_for_read(path2);
-    if (!GetFileTime(path2_fd, NULL, NULL, &path2_time)) {
-        PANIC("Could not get time of %s: %s", path2, nobuild__GetLastErrorAsString());
-    }
-    fd_close(path2_fd);
-
-    return CompareFileTime(&path1_time, &path2_time) == 1;
-#endif
+    WARN("This function is deprecated. Use `path_is_newer()` instead.");
+    return path_is_newer(path1, path2);
 }
 
 int path_is_newer(const char *path1, const char *path2)
