@@ -927,8 +927,14 @@ int fd_printf(Fd fd, const char *fmt, ...) {
         return len;
     }
 
+    // MSVC does not support variable length arrays
+#ifndef _WIN32
+     char buffer[len + 1];
+#else
+     char *buffer = malloc(sizeof *buffer * (len + 1));
+#endif
+
     va_start(args, fmt);
-    char buffer[len+1];
     int result = vsnprintf(buffer, (size_t)(len + 1), fmt, args);
     va_end(args);
     if (result < 0) {
@@ -936,6 +942,10 @@ int fd_printf(Fd fd, const char *fmt, ...) {
     }
 
     fd_write(fd, buffer, (unsigned long) result);
+
+#ifdef _WIN32
+    free(buffer);
+#endif
 
     return result;
 }
@@ -1515,7 +1525,7 @@ int nobuild__mkdir(const char *pathname, unsigned int mode)
 #ifndef _WIN32
     return mkdir(pathname, mode);
 #else
-    #pragma unused(mode)
+    _Pragma("unused(mode)");
     return _mkdir(pathname);
 #endif
 }
@@ -1703,7 +1713,7 @@ int is_path1_modified_after_path2(Cstr path1, Cstr path2)
     return path_is_newer(path1, path2);
 }
 
-long long nobuild__get_modification_time(const char *path) {
+long long nobuild__get_modification_time(Cstr path) {
     if (IS_DIR(path)) {
         long long mod_time = -1;
         FOREACH_FILE_IN_DIR(file, path, {
@@ -1725,7 +1735,7 @@ long long nobuild__get_modification_time(const char *path) {
         return (long long) statbuf.st_mtime;
 #else
         FILETIME path_time;
-        Fd path_fd = fd_open_for_read(path1);
+        Fd path_fd = fd_open_for_read(path);
         if (!GetFileTime(path_fd, NULL, NULL, &path_time)) {
             PANIC("could not get time of %s: %s", path, GetLastErrorAsString());
         }
