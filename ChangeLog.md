@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2] - 2023-05-12
+
+### Fixed
+
+- Avoid using VLA's when building on windows
+- Avoid using `PATH_MAX` on windows
+
 ## [0.4.1] - 2023-05-12
 
 ### Changed
