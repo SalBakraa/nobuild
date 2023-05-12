@@ -62,7 +62,16 @@ int main(int argc, char **argv)
     build_tools();
     run_examples();
 
-    // Run PCPP
+    Cstr_Array args = {
+        .elems = (Cstr *) argv,
+        .count = argc,
+    };
+
+    if (!cstr_array_contains(args, "--rebuild")) {
+        return 0;
+    }
+
+    // Build PCPP
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         PANIC("Could not retrieve current working directory.");
