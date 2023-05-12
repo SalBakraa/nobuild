@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.1] - 2023-05-12
+
+### Changed
+
+- **PATH:** Make `is_path1_modified_after_path2()` recursively check directories for the most recently modified file
+- **PATH:** Deprecate `is_path1_modified_after_path2()` in favor of `path_is_newer()`
+
+### Added
+
+- **PATH:** Add `path_is_newer()` function
+- **CSTR:** Add `cstr_array_contains()` function
+
 ## [0.4.0] - 2023-05-11
 
 ### Removed
