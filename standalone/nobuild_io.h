@@ -300,7 +300,7 @@ size_t fd_read(Fd fd, void *buf, unsigned long count)
 #else
     DWORD bytes;
     if (!ReadFile(fd, buf, count, &bytes, NULL)) {
-        ERRO("Read error: %s", GetLastErrorAsString());
+        ERRO("Read error: %s", nobuild__GetLastErrorAsString());
         return 0;
     }
 #endif
@@ -319,7 +319,7 @@ size_t fd_write(Fd fd, void *buf, unsigned long count)
 #else
     DWORD bytes;
     if (!WriteFile(fd, buf, count, &bytes, NULL)) {
-        ERRO("Write error: %s", GetLastErrorAsString());
+        ERRO("Write error: %s", nobuild__GetLastErrorAsString());
         return 0;
     }
 #endif

@@ -385,7 +385,7 @@ long long nobuild__get_modification_time(Cstr path) {
         FILETIME path_time;
         Fd path_fd = fd_open_for_read(path);
         if (!GetFileTime(path_fd, NULL, NULL, &path_time)) {
-            PANIC("could not get time of %s: %s", path, GetLastErrorAsString());
+            PANIC("could not get time of %s: %s", path, nobuild__GetLastErrorAsString());
         }
         fd_close(path_fd);
         return ((long long) path_time.dwHighDateTime) << 32 | path_time.dwLowDateTime;

@@ -722,7 +722,7 @@ size_t fd_read(Fd fd, void *buf, unsigned long count)
 #else
     DWORD bytes;
     if (!ReadFile(fd, buf, count, &bytes, NULL)) {
-        ERRO("Read error: %s", GetLastErrorAsString());
+        ERRO("Read error: %s", nobuild__GetLastErrorAsString());
         return 0;
     }
 #endif
@@ -741,7 +741,7 @@ size_t fd_write(Fd fd, void *buf, unsigned long count)
 #else
     DWORD bytes;
     if (!WriteFile(fd, buf, count, &bytes, NULL)) {
-        ERRO("Write error: %s", GetLastErrorAsString());
+        ERRO("Write error: %s", nobuild__GetLastErrorAsString());
         return 0;
     }
 #endif
@@ -1238,7 +1238,7 @@ long long nobuild__get_modification_time(Cstr path) {
         FILETIME path_time;
         Fd path_fd = fd_open_for_read(path);
         if (!GetFileTime(path_fd, NULL, NULL, &path_time)) {
-            PANIC("could not get time of %s: %s", path, GetLastErrorAsString());
+            PANIC("could not get time of %s: %s", path, nobuild__GetLastErrorAsString());
         }
         fd_close(path_fd);
         return ((long long) path_time.dwHighDateTime) << 32 | path_time.dwLowDateTime;

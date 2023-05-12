@@ -129,7 +129,7 @@ void file_to_c_array(Cstr path, Cstr out_path, Cstr array_type, Cstr array_name,
 #else
         DWORD bytes;
         if (!ReadFile(file, buffer, sizeof buffer, &bytes, NULL)) {
-            ERRO("Could not read file %s: %s", path, GetLastErrorAsString());
+            ERRO("Could not read file %s: %s", path, nobuild__GetLastErrorAsString());
             break;
         }
 #endif
