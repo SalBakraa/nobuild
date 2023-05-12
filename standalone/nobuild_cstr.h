@@ -34,6 +34,8 @@ Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
+int cstr_array_contains(Cstr_Array cstrs, Cstr cstr);
+
 Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim);
 #define SPLIT(cstr, delim) cstr_array_from_cstr(cstr, delim)
 
@@ -297,6 +299,15 @@ Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
     cstrs_a.count += cstrs_b.count;
     cstrs_a.capacity -= cstrs_b.count;
     return cstrs_a;
+}
+
+int cstr_array_contains(Cstr_Array cstrs, Cstr cstr) {
+    for (size_t i = 0; i < cstrs.count; ++i) {
+        if (strcmp(cstr, cstrs.elems[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)

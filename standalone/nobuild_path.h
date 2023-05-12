@@ -1,6 +1,14 @@
 #ifndef NOBUILD_PATH_H_
 #define NOBUILD_PATH_H_
 
+#ifndef NOBUILD__DEPRECATED
+#	if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
+#		define NOBUILD__DEPRECATED(func) __attribute__ ((deprecated)) func
+#	elif defined(_MSC_VER)
+#		define NOBUILD__DEPRECATED(func) __declspec (deprecated) func
+#	endif
+#endif
+
 #ifndef _WIN32
 #	define PATH_SEP "/"
 #else
@@ -41,6 +49,8 @@ Cstr_Array cstr_array_remove(Cstr_Array cstrs, Cstr cstr);
 
 Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b);
 
+int cstr_array_contains(Cstr_Array cstrs, Cstr cstr);
+
 Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim);
 #define SPLIT(cstr, delim) cstr_array_from_cstr(cstr, delim)
 
@@ -72,8 +82,9 @@ int path_is_file(Cstr path);
 int path_exists(Cstr path);
 #define PATH_EXISTS(path) path_exists(path)
 
-int is_path1_modified_after_path2(Cstr path1, Cstr path2);
-#define IS_NEWER(path1, path2) is_path1_modified_after_path2(path1, path2)
+NOBUILD__DEPRECATED(int is_path1_modified_after_path2(Cstr path1, Cstr path2));
+int path_is_newer(Cstr path1, Cstr path2);
+#define IS_NEWER(path1, path2) path_is_newer(path1, path2)
 
 void path_mkdirs(Cstr_Array path);
 #define MKDIRS(...)                                             \
@@ -396,6 +407,15 @@ Cstr_Array cstr_array_concat(Cstr_Array cstrs_a, Cstr_Array cstrs_b)
     cstrs_a.count += cstrs_b.count;
     cstrs_a.capacity -= cstrs_b.count;
     return cstrs_a;
+}
+
+int cstr_array_contains(Cstr_Array cstrs, Cstr cstr) {
+    for (size_t i = 0; i < cstrs.count; ++i) {
+        if (strcmp(cstr, cstrs.elems[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 Cstr_Array cstr_array_from_cstr(Cstr cstr, Cstr delim)
@@ -1178,7 +1198,45 @@ int path_exists(Cstr path)
 #endif
 }
 
-int is_path1_modified_after_path2(const char *path1, const char *path2)
+int is_path1_modified_after_path2(Cstr path1, Cstr path2)
+{
+    WARN("This function is deprecated. Use `path_is_newer()` instead.");
+    return path_is_newer(path1, path2);
+}
+
+long long nobuild__get_modification_time(const char *path) {
+    if (IS_DIR(path)) {
+        long long mod_time = -1;
+        FOREACH_FILE_IN_DIR(file, path, {
+            if (strcmp(file, ".") == 0 || strcmp(file, "..") == 0) {
+                continue;
+            }
+
+            long long path_mod_time = nobuild__get_modification_time(PATH(path, file));
+            mod_time = path_mod_time > mod_time ? path_mod_time : mod_time;
+        });
+        return mod_time;
+    } else {
+#ifndef _WIN32
+        struct stat statbuf = {0};
+
+        if (stat(path, &statbuf) < 0) {
+            PANIC("Could not stat %s: %s\n", path, nobuild__strerror(errno));
+        }
+        return (long long) statbuf.st_mtime;
+#else
+        FILETIME path_time;
+        Fd path_fd = fd_open_for_read(path1);
+        if (!GetFileTime(path_fd, NULL, NULL, &path_time)) {
+            PANIC("could not get time of %s: %s", path, GetLastErrorAsString());
+        }
+        fd_close(path_fd);
+        return ((long long) path_time.dwHighDateTime) << 32 | path_time.dwLowDateTime;
+#endif
+    }
+}
+
+int path_is_newer(Cstr path1, Cstr path2)
 {
     // Warn the user that the path is missing
     if (!PATH_EXISTS(path1)) {
@@ -1190,37 +1248,7 @@ int is_path1_modified_after_path2(const char *path1, const char *path2)
         return 1;
     }
 
-#ifndef _WIN32
-    struct stat statbuf = {0};
-
-    if (stat(path1, &statbuf) < 0) {
-        PANIC("Could not stat %s: %s\n", path1, nobuild__strerror(errno));
-    }
-    time_t path1_time = statbuf.st_mtime;
-
-    if (stat(path2, &statbuf) < 0) {
-        PANIC("Could not stat %s: %s\n", path2, nobuild__strerror(errno));
-    }
-    time_t  path2_time = statbuf.st_mtime;
-
-    return path1_time > path2_time;
-#else
-    FILETIME path1_time, path2_time;
-
-    Fd path1_fd = fd_open_for_read(path1);
-    if (!GetFileTime(path1_fd, NULL, NULL, &path1_time)) {
-        PANIC("Could not get time of %s: %s", path1, nobuild__GetLastErrorAsString());
-    }
-    fd_close(path1_fd);
-
-    Fd path2_fd = fd_open_for_read(path2);
-    if (!GetFileTime(path2_fd, NULL, NULL, &path2_time)) {
-        PANIC("Could not get time of %s: %s", path2, nobuild__GetLastErrorAsString());
-    }
-    fd_close(path2_fd);
-
-    return CompareFileTime(&path1_time, &path2_time) == 1;
-#endif
+    return nobuild__get_modification_time(path1) > nobuild__get_modification_time(path2);
 }
 
 void path_mkdirs(Cstr_Array path)
