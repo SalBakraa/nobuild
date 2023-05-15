@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.4] - 2023-05-16
+
+### Fixed
+
+- **NOBUILD.H**: Fix inclusion of implementation when `NOBUILD_IMPLEMENTATION` is not defined
+
 ## [0.4.3] - 2023-05-12
 
 ### Fixed
