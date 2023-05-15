@@ -79,7 +79,6 @@ void file_to_c_array(Cstr path, Cstr out_path, Cstr array_type,  Cstr array_name
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define NOBUILD_IMPLEMENTATION
 #ifdef NOBUILD_IMPLEMENTATION
 
 #define NOBUILD_LOG_IMPLEMENTATION
