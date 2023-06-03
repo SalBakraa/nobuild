@@ -276,7 +276,7 @@ Fd fd_open_for_write(const char *path)
                     GENERIC_WRITE,         // open for writing
                     0,                     // do not share
                     &saAttr,               // default security
-                    CREATE_NEW,            // create new file only
+                    CREATE_ALWAYS,         // Same as `O_CREAT | O_TRUNC`
                     FILE_ATTRIBUTE_NORMAL, // normal file
                     NULL                   // no attr. template
                 );
