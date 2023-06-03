@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.6] - 2023-06-03
+
+### Fixed
+
+- **IO:** Have `fd_open_for_write()` overwrite the file if it already exists on Windows
+
 ## [0.4.5] - 2023-06-03
 
 ### Fixed
