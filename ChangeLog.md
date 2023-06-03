@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.5] - 2023-06-03
+
+### Fixed
+
+- **PATH:** Have `path_cp()` exit if no bytes are read or written on Windows
+
 ## [0.4.4] - 2023-05-16
 
 ### Fixed
