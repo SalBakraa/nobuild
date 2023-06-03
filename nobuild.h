@@ -1859,8 +1859,16 @@ void path_copy(Cstr old_path, Cstr new_path) {
 
             }
 
+            if (bytes == 0) {
+                break;
+            }
+
             if (!WriteFile(f2, buffer, bytes, &bytes, NULL)) {
                 ERRO("Could not copy %s to %s due to write error: %s", old_path, new_path, nobuild__GetLastErrorAsString());
+                break;
+            }
+
+            if (bytes == 0) {
                 break;
             }
 #endif
